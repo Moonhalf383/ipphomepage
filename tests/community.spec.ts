@@ -274,12 +274,12 @@ test('mobile bottom nav renders its icons and keeps the active label clear of th
   const active = page.locator('.main-nav a.active');
   await expect(active.locator('span')).toBeVisible();
   const geom = await active.evaluate(a => {
+    const label = a.querySelector('span');
+    if (!label) throw new Error('底部导航激活项没有文字标签');
     const pill = getComputedStyle(a, '::before');
     const link = a.getBoundingClientRect();
-    const labelElement = a.querySelector('span');
-    if (!labelElement) throw new Error('Active navigation link is missing its label');
-    const label = labelElement.getBoundingClientRect();
-    return { pillBottom: parseFloat(pill.top) + parseFloat(pill.height), labelTop: label.top - link.top };
+    const box = label.getBoundingClientRect();
+    return { pillBottom: parseFloat(pill.top) + parseFloat(pill.height), labelTop: box.top - link.top };
   });
   expect(geom.labelTop).toBeGreaterThanOrEqual(geom.pillBottom);
 });
