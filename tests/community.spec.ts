@@ -148,7 +148,7 @@ test('visible cards, artwork and UI switches use finite expressive motion', asyn
   await firstPersonBook.hover();
   await expect
     .poll(() =>
-      firstPersonBook.locator('.person-avatar').evaluate(e => getComputedStyle(e).translate)
+      firstPersonBook.locator('.person-content > .person-avatar').evaluate(e => getComputedStyle(e).translate)
     )
     .not.toBe('none');
   await expect
