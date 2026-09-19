@@ -152,6 +152,40 @@ test('hover has spatial feedback, parallax resets, and route changes animate wit
   expect(await page.evaluate(() => (window as any).routeAnimationOptions.duration)).toBe(500);
 });
 
+test('title counter always wipes out after hexadecimal counting speeds up', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'Hover requires a fine pointer');
+  await page.goto('/');
+  const line = page.locator('.counting-line');
+  const plaque = line.locator('.title-plaque');
+  const closedClip = await plaque.evaluate(element => getComputedStyle(element).clipPath);
+
+  await line.hover();
+  await expect(line).toHaveClass(/is-lit/);
+  await expect
+    .poll(async () => {
+      const text = (await line.locator('.title-counter').textContent()) ?? '';
+      return Number.parseInt(text.replace('i = ', ''), 16);
+    })
+    .toBeGreaterThan(0xe);
+  await expect.poll(() => plaque.evaluate(element => getComputedStyle(element).clipPath)).not.toBe(closedClip);
+
+  await page.mouse.move(2, 2);
+  await expect(line).not.toHaveClass(/is-lit/);
+  await expect
+    .poll(() => plaque.evaluate(element => element.getAnimations().some(animation => animation.playState === 'running')))
+    .toBe(true);
+  await expect.poll(() => plaque.evaluate(element => getComputedStyle(element).clipPath)).toBe(closedClip);
+  const stoppedAt = await line.locator('.title-counter').textContent();
+  await page.waitForTimeout(150);
+  expect(await line.locator('.title-counter').textContent()).toBe(stoppedAt);
+
+  await line.hover();
+  await expect(line).toHaveClass(/is-lit/);
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(line).not.toHaveClass(/is-lit/);
+  await expect.poll(() => plaque.evaluate(element => getComputedStyle(element).clipPath)).toBe(closedClip);
+});
+
 test('reduced motion and missing/failed View Transition API preserve usable theme controls', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(() => {
