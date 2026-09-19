@@ -219,28 +219,19 @@ md-text-button > svg,
   .icon-button:not(:disabled):active {
     scale: 0.96;
   }
-  .link-button:focus-visible,
-  md-filled-button:not([disabled]):focus-within,
-  md-outlined-button:not([disabled]):focus-within,
-  md-filled-tonal-button:not([disabled]):focus-within {
-    translate: 0 -2px;
-  }
   .service-card:focus-visible .service-icon {
     rotate: -8deg;
     scale: 1.08;
   }
 }
+/* Hover owners stay anchored: moving the hit target itself makes edge pointers repeatedly enter and leave.
+   Elevation comes from shadows, shape/color changes and animated descendants instead. */
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .link-button:hover,
   md-filled-button:not([disabled]):hover,
   md-filled-tonal-button:not([disabled]):hover,
   md-outlined-button:not([disabled]):hover {
-    translate: 0 -3px;
     box-shadow: 0 4px 9px color-mix(in srgb, var(--md-sys-color-shadow) 16%, transparent);
-  }
-  md-text-button:not([disabled]):hover,
-  .text-link:hover {
-    translate: 0 -1px;
   }
   .link-button:hover > svg,
   .text-link:hover > svg,
@@ -251,9 +242,6 @@ md-text-button > svg,
   }
   .header-blog:hover > svg {
     translate: 2px -2px;
-  }
-  .main-nav a:hover {
-    translate: 0 -2px;
   }
   .main-nav a:active {
     scale: 0.96;
@@ -317,60 +305,61 @@ md-text-button > svg,
   .hero-art:hover .orbit-two {
     rotate: -5deg;
   }
-  .service-card:hover {
+  .service-card-hitbox:hover > .service-card,
+  .service-card-hitbox:focus-within > .service-card {
     transform: translateY(-7px);
     box-shadow: 0 7px 18px color-mix(in srgb, var(--md-sys-color-shadow) 12%, transparent);
   }
-  .service-card:active {
+  .service-card-hitbox:active > .service-card {
     transform: translateY(-2px);
   }
-  .service-card:hover .service-icon {
+  .service-card-hitbox:hover .service-icon {
     rotate: -9deg;
     scale: 1.1;
     border-radius: 17px 11px 17px 11px;
   }
-  .service-card:hover h3 {
+  .service-card-hitbox:hover h3 {
     translate: 4px 0;
   }
-  .blog-card:hover .book-page {
+  .service-card-hitbox:hover .blog-card .book-page {
     rotate: -9deg;
     translate: -5px -7px;
   }
-  .blog-card:hover .book-back {
+  .service-card-hitbox:hover .blog-card .book-back {
     rotate: 7deg;
     translate: 4px 1px;
   }
-  .blog-card:hover .book-star {
+  .service-card-hitbox:hover .blog-card .book-star {
     rotate: 110deg;
     scale: 1.14;
   }
-  .blogroll-card:hover .bubble-one {
+  .service-card-hitbox:hover .blogroll-card .bubble-one {
     rotate: -8deg;
     translate: -5px -6px;
   }
-  .blogroll-card:hover .bubble-two {
+  .service-card-hitbox:hover .blogroll-card .bubble-two {
     rotate: -7deg;
     translate: 6px -2px;
   }
-  .blogroll-card:hover .bubble-three {
+  .service-card-hitbox:hover .blogroll-card .bubble-three {
     rotate: 90deg;
   }
-  .blogroll-card:hover .bubble-four {
+  .service-card-hitbox:hover .blogroll-card .bubble-four {
     translate: 4px -5px;
   }
-  .blogroll-card:hover .connect-line {
+  .service-card-hitbox:hover .blogroll-card .connect-line {
     rotate: 10deg;
     scale: 1.06;
   }
-  .quiz-card:hover .mini-certificate {
+  .service-card-hitbox:hover .quiz-card .mini-certificate {
     rotate: 8deg;
     translate: 0 -7px;
   }
-  .quiz-card:hover .mini-seal {
+  .service-card-hitbox:hover .quiz-card .mini-seal {
     scale: 1.14;
     rotate: -10deg;
   }
-  .quiz-card:hover .certificate-spark {
+  .service-card-hitbox:hover .quiz-card .certificate-spark {
     rotate: 90deg;
     scale: 1.12;
   }
@@ -378,9 +367,6 @@ md-text-button > svg,
     translate: 0 -3px;
     rotate: -7deg;
     border-radius: 50%;
-  }
-  .scale-options label:hover {
-    translate: 0 -4px;
   }
 }
 @keyframes content-arrive {
@@ -609,43 +595,56 @@ table tbody tr,
   }
 }
 
+/* The same fixed-hit-target rule applies to page-level cards, fields, chips and links below. */
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .surface-card:hover,
-  .project-card:hover,
-  .project-card:focus-within,
-  .home-events:hover,
-  .creation-path:hover {
-    translate: 0 -5px;
+  .surface-card-hitbox:hover > .surface-card,
+  .project-card-hitbox:hover > .project-card,
+  .project-card-hitbox:focus-within > .project-card,
+  .home-events-hitbox:hover > .home-events,
+  .creation-path-hitbox:hover > .creation-path {
     box-shadow: 0 14px 28px color-mix(in srgb, var(--md-sys-color-shadow) 13%, transparent);
     border-color: color-mix(in srgb, var(--md-sys-color-primary) 38%, var(--md-sys-color-outline-variant));
+  }
+  .project-card-hitbox:hover > .project-card,
+  .project-card-hitbox:focus-within > .project-card {
+    translate: 0 -5px;
+  }
+  .surface-card-hitbox:hover > .surface-card,
+  .surface-card-hitbox:focus-within > .surface-card,
+  .home-events-hitbox:hover > .home-events,
+  .home-events-hitbox:focus-within > .home-events,
+  .creation-path-hitbox:hover > .creation-path,
+  .creation-path-hitbox:focus-within > .creation-path {
+    translate: 0 -5px;
   }
   .question-panel:hover,
   .question-editor:hover,
   .settings-panel:hover,
   .records-panel:hover {
-    translate: 0 -2px;
     box-shadow: 0 8px 20px color-mix(in srgb, var(--md-sys-color-shadow) 9%, transparent);
   }
-  .project-card:hover::after,
-  .project-card:focus-within::after,
+  .project-card-hitbox:hover > .project-card::after,
+  .project-card-hitbox:focus-within > .project-card::after,
   .surface-card:hover::after,
-  .home-events:hover::after,
-  .creation-path:hover::after {
+  .surface-card-hitbox:hover > .surface-card::after,
+  .home-events-hitbox:hover > .home-events::after,
+  .creation-path-hitbox:hover > .creation-path::after {
     opacity: 1;
   }
 
-  .project-card:hover .project-art svg {
+  .project-card-hitbox:hover .project-art svg {
     scale: 1.035;
     rotate: -1deg;
   }
-  .project-card:hover .project-copy h3 {
+  .project-card-hitbox:hover .project-copy h3 {
     translate: 5px 0;
     color: var(--md-sys-color-primary);
   }
-  .project-card:hover .project-art {
+  .project-card-hitbox:hover .project-art {
     background-color: var(--md-sys-color-surface-container);
   }
-  .project-card:hover .custom-cover img {
+  .project-card-hitbox:hover .custom-cover img {
     scale: 1.045;
   }
   .custom-cover {
@@ -657,12 +656,12 @@ table tbody tr,
       filter var(--motion-medium) var(--motion-standard);
   }
 
-  .person-book:hover .person-cover span:last-child {
+  .person-book-hitbox:hover .person-cover span:last-child {
     display: inline-block;
     rotate: 10deg;
     scale: 1.12;
   }
-  .person-book:hover .person-avatar {
+  .person-book-hitbox:hover .person-avatar {
     translate: 0 -5px;
     rotate: -3deg;
     scale: 1.04;
@@ -670,18 +669,18 @@ table tbody tr,
       0 0 0 4px var(--md-sys-color-surface-container-lowest),
       0 8px 16px #0002;
   }
-  .person-book:hover .person-avatar.lead-avatar {
+  .person-book-hitbox:hover .person-avatar.lead-avatar {
     box-shadow:
       0 0 0 4px var(--md-sys-color-surface-container-lowest),
       0 0 0 6px var(--lead-glow-soft),
       0 0 22px 6px var(--lead-glow),
       0 8px 16px #0002;
   }
-  .person-book:hover .person-content h3 {
+  .person-book-hitbox:hover .person-content h3 {
     color: var(--md-sys-color-primary);
     translate: 3px 0;
   }
-  .person-book:hover .person-spine {
+  .person-book-hitbox:hover .person-spine {
     filter: saturate(1.08);
   }
   .person-cover span:last-child,
@@ -706,8 +705,12 @@ table tbody tr,
     border-radius: 50%;
     box-shadow: 0 8px 16px color-mix(in srgb, var(--md-sys-color-shadow) 12%, transparent);
   }
+  .page-symbol:hover {
+    translate: none;
+    rotate: none;
+    scale: none;
+  }
   .quiz-facts > div:hover {
-    translate: 0 -4px;
     background: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
   }
   .quiz-facts > div:hover strong {
@@ -723,7 +726,6 @@ table tbody tr,
 
   .notice:hover,
   .demo-people-notice:hover {
-    translate: 3px -2px;
     box-shadow: 0 7px 15px color-mix(in srgb, var(--md-sys-color-shadow) 9%, transparent);
   }
   .notice:hover > svg {
@@ -731,17 +733,14 @@ table tbody tr,
     scale: 1.1;
   }
   .chip:hover {
-    translate: 0 -2px;
     scale: 1.035;
     border-radius: 12px;
   }
   .collection-search:hover,
   .collection-search:focus-within {
-    translate: 0 -2px;
     box-shadow: 0 6px 14px color-mix(in srgb, var(--md-sys-color-shadow) 9%, transparent);
   }
   .filter-chips button:hover {
-    translate: 0 -3px;
     scale: 1.02;
     box-shadow: 0 5px 10px color-mix(in srgb, var(--md-sys-color-shadow) 8%, transparent);
     border-radius: 16px;
@@ -753,7 +752,6 @@ table tbody tr,
   }
 
   .project-hero-symbol:hover {
-    rotate: 2deg;
     scale: 1.035;
     border-radius: 55% 45% 42% 58%;
     box-shadow: 0 14px 26px color-mix(in srgb, var(--md-sys-color-shadow) 12%, transparent);
@@ -770,7 +768,6 @@ table tbody tr,
   }
   .creation-links a:hover,
   .profile-links a:hover {
-    translate: 5px -2px;
     background-color: var(--md-sys-color-secondary-container);
     box-shadow: 0 6px 13px color-mix(in srgb, var(--md-sys-color-shadow) 8%, transparent);
   }
@@ -780,7 +777,6 @@ table tbody tr,
     scale: 1.08;
   }
   .project-tags > span:hover {
-    translate: 0 -2px;
     scale: 1.04;
     background: var(--md-sys-color-secondary-container);
   }
@@ -792,7 +788,6 @@ table tbody tr,
   }
   .project-license summary:hover {
     color: var(--md-sys-color-primary);
-    translate: 3px 0;
   }
   .project-license summary {
     transition:
@@ -800,13 +795,10 @@ table tbody tr,
       color var(--motion-short);
   }
 
-  .home-events:hover .event-teaser-icon {
+  .home-events-hitbox:hover .event-teaser-icon {
     rotate: -9deg;
     scale: 1.1;
     border-radius: 50%;
-  }
-  .home-values:hover {
-    translate: 4px -2px;
   }
   .home-values:hover > svg {
     rotate: -9deg;
@@ -817,7 +809,7 @@ table tbody tr,
       rotate var(--motion-medium) var(--motion-spring),
       scale var(--motion-medium) var(--motion-spring);
   }
-  .events-empty:hover .empty-ticket {
+  .surface-card-hitbox:hover .events-empty .empty-ticket {
     rotate: 2deg;
     translate: 0 -7px;
     scale: 1.025;
@@ -837,14 +829,14 @@ table tbody tr,
     rotate: 90deg;
     scale: 1.15;
   }
-  .event-card:hover .event-date {
+  .surface-card-hitbox:hover .event-card .event-date {
     translate: 0 -4px;
   }
-  .event-card:hover .event-date > svg {
+  .surface-card-hitbox:hover .event-card .event-date > svg {
     rotate: -9deg;
     scale: 1.08;
   }
-  .event-card:hover .event-cover {
+  .surface-card-hitbox:hover .event-card .event-cover {
     scale: 1.035;
     rotate: 1deg;
     box-shadow: 0 8px 17px #0002;
@@ -858,7 +850,6 @@ table tbody tr,
   }
 
   .verification-status:hover {
-    translate: 4px -3px;
     box-shadow: 0 7px 15px color-mix(in srgb, var(--md-sys-color-shadow) 9%, transparent);
   }
   .verification-status:hover > svg {
@@ -866,7 +857,6 @@ table tbody tr,
     scale: 1.12;
   }
   .detail-list > div:hover {
-    translate: 5px 0;
     background: color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent);
   }
   .score-card:hover .score-ring {
@@ -896,11 +886,9 @@ table tbody tr,
   }
 
   .admin-stats:hover {
-    translate: 0 -3px;
     box-shadow: 0 9px 20px color-mix(in srgb, var(--md-sys-color-shadow) 9%, transparent);
   }
   .admin-stats > div:hover {
-    translate: 0 -4px;
     background: color-mix(in srgb, var(--md-sys-color-primary) 6%, transparent);
   }
   .admin-stats > div:hover strong {
@@ -909,9 +897,6 @@ table tbody tr,
   .admin-stats strong {
     transform-origin: left;
     transition: scale var(--motion-medium) var(--motion-spring);
-  }
-  .admin-tabs button:hover {
-    translate: 0 -2px;
   }
   .admin-tabs button:hover svg {
     rotate: -8deg;
@@ -923,7 +908,6 @@ table tbody tr,
       scale var(--motion-medium) var(--motion-spring);
   }
   .question-list article:hover {
-    translate: 5px 0;
     background: color-mix(in srgb, var(--md-sys-color-primary) 5%, transparent);
   }
   .question-list article:hover .question-list-number {
@@ -933,30 +917,18 @@ table tbody tr,
   .question-list article:hover .question-tags {
     translate: 3px 0;
   }
-  .option-editor > div:hover {
-    translate: 4px 0;
-  }
   table tbody tr:hover {
     background: var(--md-sys-color-surface-container-low);
     box-shadow: inset 4px 0 var(--md-sys-color-primary);
   }
   .record-detail:hover {
-    translate: 0 -3px;
     box-shadow: 0 7px 15px color-mix(in srgb, var(--md-sys-color-shadow) 8%, transparent);
-  }
-  .switch-label:hover,
-  .check-label:hover {
-    translate: 4px 0;
   }
   .switch-label:hover input[role='switch'] {
     scale: 1.05;
   }
-  .privacy-box:hover {
-    translate: 3px 0;
-  }
 
   .answer-option:hover {
-    translate: 5px -2px;
     scale: 1.008;
     box-shadow: 0 6px 13px color-mix(in srgb, var(--md-sys-color-shadow) 8%, transparent);
     border-radius: 18px;
@@ -981,7 +953,6 @@ table tbody tr,
   }
 
   .theme-preview:hover {
-    translate: 0 -3px;
     box-shadow: 0 7px 15px color-mix(in srgb, var(--md-sys-color-shadow) 9%, transparent);
   }
   .theme-preview:hover .preview-spark {
@@ -998,12 +969,10 @@ table tbody tr,
     box-shadow: 0 7px 14px #0002;
   }
   .custom-color-picker:hover {
-    translate: 0 -3px;
     scale: 1.04;
     border-radius: 18px;
   }
   .theme-dialog-icon:hover {
-    rotate: -9deg;
     scale: 1.08;
     border-radius: 50%;
   }
@@ -1017,9 +986,6 @@ table tbody tr,
   .icon-button[aria-label*='移除']:hover > svg {
     rotate: 90deg;
   }
-  .footer-links a:hover {
-    translate: 0 -3px;
-  }
   .footer-links a:hover > svg {
     translate: 2px -2px;
   }
@@ -1028,7 +994,6 @@ table tbody tr,
     scale: 1.13;
   }
   .breadcrumb a:hover {
-    translate: 3px 0;
     color: var(--md-sys-color-primary);
   }
 }

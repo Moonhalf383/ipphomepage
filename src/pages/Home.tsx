@@ -154,7 +154,8 @@ export function Home() {
       </section>
       <section id="explore" className="explore-section">
         <div className="service-grid">
-          <a className="service-card blog-card" href="https://ippclub.org/" target="_blank" rel="noopener noreferrer">
+          <div className="service-card-hitbox">
+            <a className="service-card blog-card" href="https://ippclub.org/" target="_blank" rel="noopener noreferrer">
             <div className="card-top">
               <span className="service-icon">
                 <BookOpen />
@@ -174,13 +175,15 @@ export function Home() {
             <h3>社团博客</h3>
             <p>技术实践、折腾记录与不设限的想法。</p>
             <span className="sr-only">（新窗口打开）</span>
-          </a>
-          <a
-            className="service-card blogroll-card"
-            href="https://ippclub.org/blogroll/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+            </a>
+          </div>
+          <div className="service-card-hitbox">
+            <a
+              className="service-card blogroll-card"
+              href="https://ippclub.org/blogroll/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
             <div className="card-top">
               <span className="service-icon">
                 <Compass />
@@ -199,8 +202,10 @@ export function Home() {
             <h3>Blogroll · 友邻星球</h3>
             <p>一份友链列表，通往独立而鲜活的博客。</p>
             <span className="sr-only">（新窗口打开）</span>
-          </a>
-          <Link className="service-card quiz-card" to="/assessment">
+            </a>
+          </div>
+          <div className="service-card-hitbox">
+            <Link className="service-card quiz-card" to="/assessment">
             <div className="card-top">
               <span className="service-icon">
                 <Fingerprint />
@@ -220,7 +225,8 @@ export function Home() {
             </div>
             <h3>素质问卷</h3>
             <p>随机抽题，答完了解社区共识与行为准则。</p>
-          </Link>
+            </Link>
+          </div>
         </div>
       </section>
       <section className="home-projects" aria-labelledby="home-projects-title">
@@ -259,18 +265,20 @@ export function Home() {
           </div>
         </section>
       )}
-      <section className="home-events" aria-labelledby="home-events-title">
-        <span className="event-teaser-icon">
-          <Trophy size={30} />
-        </span>
-        <div>
-          <h2 id="home-events-title">赛事</h2>
-          <p>{events.length ? `赛事展台已收录 ${events.length} 场赛事。` : '赛事展台已预留，还没有已公布的赛事。'}</p>
-        </div>
-        <Link className="link-button" to="/events">
-          查看赛事展台 <ArrowRight size={18} />
-        </Link>
-      </section>
+      <div className="home-events-hitbox">
+        <section className="home-events" aria-labelledby="home-events-title">
+          <span className="event-teaser-icon">
+            <Trophy size={30} />
+          </span>
+          <div>
+            <h2 id="home-events-title">赛事</h2>
+            <p>{events.length ? `赛事展台已收录 ${events.length} 场赛事。` : '赛事展台已预留，还没有已公布的赛事。'}</p>
+          </div>
+          <Link className="link-button" to="/events">
+            查看赛事展台 <ArrowRight size={18} />
+          </Link>
+        </section>
+      </div>
       <section className="home-values" aria-labelledby="home-values-title">
         <HeartHandshake size={25} />
         <div>

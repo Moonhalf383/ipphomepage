@@ -12,7 +12,8 @@ export function eventDate(date: string) {
 function EventCard({ event }: { event: ClubEvent }) {
   const [failed, setFailed] = useState(false);
   return (
-    <article className="event-card surface-card">
+    <div className="surface-card-hitbox">
+      <article className="event-card surface-card">
       <div className="event-date">
         <CalendarDays size={22} />
         <strong>{event.startDate.slice(0, 4)}</strong>
@@ -55,7 +56,8 @@ function EventCard({ event }: { event: ClubEvent }) {
           onError={() => setFailed(true)}
         />
       )}
-    </article>
+      </article>
+    </div>
   );
 }
 export function Events() {
@@ -109,25 +111,27 @@ export function Events() {
           )}
         </>
       ) : (
-        <section className="events-empty surface-card">
-          <div className="empty-ticket" aria-hidden="true">
-            <span>I++ / NEXT CHAPTER</span>
-            <Trophy size={46} />
-            <div />
-          </div>
-          <div>
-            <span className="chip">赛事展台已预留</span>
-            <h2>还没有赛事记录</h2>
-            <p>
-              <strong>目前暂无已公布赛事。</strong>
-              <br />
-              确定举办信息后，这里会展示介绍、时间、社团参与身份与相关链接。
-            </p>
-            <Link className="text-link" to="/projects">
-              先逛逛项目工坊 <ArrowRight size={18} />
-            </Link>
-          </div>
-        </section>
+        <div className="surface-card-hitbox">
+          <section className="events-empty surface-card">
+            <div className="empty-ticket" aria-hidden="true">
+              <span>I++ / NEXT CHAPTER</span>
+              <Trophy size={46} />
+              <div />
+            </div>
+            <div>
+              <span className="chip">赛事展台已预留</span>
+              <h2>还没有赛事记录</h2>
+              <p>
+                <strong>目前暂无已公布赛事。</strong>
+                <br />
+                确定举办信息后，这里会展示介绍、时间、社团参与身份与相关链接。
+              </p>
+              <Link className="text-link" to="/projects">
+                先逛逛项目工坊 <ArrowRight size={18} />
+              </Link>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

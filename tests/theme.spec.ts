@@ -119,7 +119,8 @@ test('hover has spatial feedback, parallax resets, and route changes animate wit
   await page.goto('/');
   const cta = page.locator('.hero-actions .link-button');
   await cta.hover();
-  await expect.poll(() => cta.evaluate(e => getComputedStyle(e).translate)).not.toBe('none');
+  expect(await cta.evaluate(e => getComputedStyle(e).translate)).toBe('none');
+  await expect.poll(() => cta.evaluate(e => getComputedStyle(e).boxShadow)).not.toBe('none');
   await page.locator('#hero-title').hover();
   expect(
     await page

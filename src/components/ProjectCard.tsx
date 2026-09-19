@@ -205,12 +205,13 @@ export function ProjectCard({
   compact?: boolean;
 }) {
   return (
-    <article
-      className={`project-card ${featured ? 'featured-project' : ''} ${compact ? 'compact-project' : ''}`}
-      data-project-id={project.id}
-    >
-      <ProjectArtwork project={project} />
-      <div className="project-copy">
+    <div className={`project-card-hitbox ${featured ? 'is-featured' : ''} ${compact ? 'is-compact' : ''}`}>
+      <article
+        className={`project-card ${featured ? 'featured-project' : ''} ${compact ? 'compact-project' : ''}`}
+        data-project-id={project.id}
+      >
+        <ProjectArtwork project={project} />
+        <div className="project-copy">
         <div className="project-category">
           <Code2 size={16} />
           {projectCategories[project.category]}
@@ -241,7 +242,8 @@ export function ProjectCard({
             </ExternalLink>
           </details>
         )}
-      </div>
-    </article>
+        </div>
+      </article>
+    </div>
   );
 }

@@ -119,7 +119,7 @@ test('projects show real sources and events have an honest empty state', async (
   await expect(page).toHaveURL(/\/people$/);
 });
 
-test('visible cards, artwork and UI switches use finite expressive motion', async ({ page }, info) => {
+test('visible cards keep stable hit targets while their contents use finite expressive motion', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'Hover requires a fine pointer');
   const moved = async (selector: string, property: 'translate' | 'scale' | 'rotate' = 'translate') => {
     const locator = page.locator(selector).first();
@@ -128,13 +128,51 @@ test('visible cards, artwork and UI switches use finite expressive motion', asyn
       .poll(() => locator.evaluate((element, property) => getComputedStyle(element)[property as 'translate'], property))
       .not.toBe('none');
   };
+  const stableHover = async (selector: string, edge: 'bottom' | 'left' = 'bottom') => {
+    const locator = page.locator(selector).first();
+    await locator.scrollIntoViewIfNeeded();
+    const before = (await locator.boundingBox())!;
+    const x = edge === 'left' ? before.x + 1 : before.x + before.width / 2;
+    const y = edge === 'bottom' ? before.y + before.height - 1 : before.y + before.height / 2;
+    await page.mouse.move(x, y);
+    await expect.poll(() => locator.evaluate(element => element.matches(':hover'))).toBe(true);
+    await page.waitForTimeout(650);
+    expect(await locator.evaluate(element => element.matches(':hover'))).toBe(true);
+    const after = (await locator.boundingBox())!;
+    expect(after.x).toBeCloseTo(before.x, 1);
+    expect(after.y).toBeCloseTo(before.y, 1);
+    expect(after.width).toBeCloseTo(before.width, 1);
+    expect(after.height).toBeCloseTo(before.height, 1);
+    await page.mouse.move(2, 2);
+  };
+  const stableLift = async (hitboxSelector: string, surfaceSelector: string) => {
+    const hitbox = page.locator(hitboxSelector).first();
+    const surface = hitbox.locator(surfaceSelector);
+    await hitbox.scrollIntoViewIfNeeded();
+    const hitboxBefore = (await hitbox.boundingBox())!;
+    const surfaceBefore = (await surface.boundingBox())!;
+    await page.mouse.move(hitboxBefore.x + hitboxBefore.width / 2, hitboxBefore.y + hitboxBefore.height - 1);
+    await page.waitForTimeout(650);
+    expect(await hitbox.evaluate(element => element.matches(':hover'))).toBe(true);
+    const hitboxAfter = (await hitbox.boundingBox())!;
+    const surfaceAfter = (await surface.boundingBox())!;
+    expect(hitboxAfter.x).toBeCloseTo(hitboxBefore.x, 1);
+    expect(hitboxAfter.y).toBeCloseTo(hitboxBefore.y, 1);
+    expect(hitboxAfter.width).toBeCloseTo(hitboxBefore.width, 1);
+    expect(hitboxAfter.height).toBeCloseTo(hitboxBefore.height, 1);
+    expect(surfaceAfter.y).toBeLessThan(surfaceBefore.y - 3);
+    await page.mouse.move(2, 2);
+  };
   await page.goto('/');
   for (const selector of ['.service-card', '.project-card', '.person-book', '.home-events', '.home-values']) {
     const element = page.locator(selector).first();
     await expect(element).toBeVisible();
     expect(await element.evaluate(e => getComputedStyle(e).transitionDuration)).not.toMatch(/^(0s,?\s*)+$/);
   }
-  await moved('.home-events');
+  await stableLift('.service-card-hitbox', '.service-card');
+  await stableLift('.project-card-hitbox', '.project-card');
+  await stableLift('.person-book-hitbox', '.person-book');
+  await stableLift('.home-events-hitbox', '.home-events');
   await page.locator('.project-card').first().hover();
   await expect
     .poll(() =>
@@ -163,8 +201,9 @@ test('visible cards, artwork and UI switches use finite expressive motion', asyn
     .toBeLessThan(0.5);
 
   await page.goto('/projects');
-  await moved('.project-card');
-  await moved('.project-hero-symbol', 'rotate');
+  await stableLift('.project-card-hitbox', '.project-card');
+  await stableLift('.creation-path-hitbox', '.creation-path');
+  await moved('.project-hero-symbol', 'scale');
   const languageFilter = page.getByRole('button', { name: '语言工具', exact: true });
   expect(await languageFilter.evaluate(e => getComputedStyle(e).transitionProperty)).toContain('translate');
   expect(await languageFilter.evaluate(e => getComputedStyle(e).transitionProperty)).toContain('border-radius');
@@ -177,7 +216,7 @@ test('visible cards, artwork and UI switches use finite expressive motion', asyn
   await expect
     .poll(() =>
       page
-        .locator('.project-card')
+        .locator('.project-card-hitbox')
         .first()
         .evaluate(e => getComputedStyle(e).animationName)
     )
@@ -195,20 +234,21 @@ test('visible cards, artwork and UI switches use finite expressive motion', asyn
 
   await page.goto('/events');
   await page.waitForTimeout(500);
+  await stableLift('.surface-card-hitbox', '.events-empty');
   await page.locator('.events-empty').hover();
-  await expect.poll(() => page.locator('.events-empty').evaluate(e => getComputedStyle(e).translate)).not.toBe('none');
   await expect.poll(() => page.locator('.empty-ticket').evaluate(e => getComputedStyle(e).translate)).not.toBe('none');
 
   await page.goto('/assessment');
   await expect(page.locator('.notice')).toBeVisible();
   await page.waitForTimeout(400);
+  await stableHover('.notice');
   await page.locator('.notice').hover();
-  await expect.poll(() => page.locator('.notice').evaluate(e => getComputedStyle(e).translate)).not.toBe('none');
+  await expect.poll(() => page.locator('.notice > svg').evaluate(e => getComputedStyle(e).rotate)).not.toBe('none');
   for (const route of ['/assessment', '/verify', '/admin']) {
     await page.goto(route);
     const card = page.locator('.surface-card').first();
     await expect(card).toBeVisible();
-    await moved('.surface-card');
+    await stableHover('.surface-card');
   }
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
