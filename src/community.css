@@ -176,7 +176,8 @@
   flex-wrap: wrap;
   gap: 7px;
 }
-.filter-chips button {
+.filter-chips button,
+.year-filter select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -187,14 +188,19 @@
   border-radius: 12px;
   font-size: 12px;
 }
-.filter-chips button[aria-pressed='true'] {
+.filter-chips button[aria-pressed='true'],
+.year-filter select[data-active='true'] {
   background: var(--md-sys-color-secondary-container);
   color: var(--md-sys-color-on-secondary-container);
   border-color: transparent;
+}
+.filter-chips button[aria-pressed='true'] {
   font-weight: 600;
 }
-.filter-chips button:hover {
+.filter-chips button:hover,
+.year-filter select:hover {
   background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
 }
 .year-filter {
   display: flex;
@@ -202,11 +208,101 @@
   gap: 9px;
   font-size: 12px;
 }
+.year-select {
+  position: relative;
+  display: inline-grid;
+  width: 112px;
+}
 .year-filter select {
-  width: 132px;
-  padding: 12px;
+  width: 100%;
+  min-height: 48px;
+  appearance: none;
+  padding: 10px 32px 10px 15px;
+  text-align: center;
+  text-align-last: center;
+  border-color: var(--md-sys-color-outline-variant);
   font-size: 12px;
+  font-weight: 600;
   border-radius: 12px;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-short) var(--motion-standard),
+    border-color var(--motion-short) var(--motion-standard),
+    border-radius var(--motion-short) var(--motion-standard),
+    box-shadow var(--motion-short) var(--motion-standard);
+}
+.year-select > svg {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--md-sys-color-on-surface-variant);
+  pointer-events: none;
+}
+@supports (appearance: base-select) {
+  .year-filter select {
+    align-items: center;
+    justify-content: center;
+  }
+  .year-filter select,
+  .year-filter select::picker(select) {
+    appearance: base-select;
+  }
+  .year-filter select::picker-icon {
+    display: none;
+  }
+  .year-filter select::picker(select) {
+    margin-top: 6px;
+    padding: 6px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container);
+    color: var(--md-sys-color-on-surface);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--md-sys-color-shadow) 16%, transparent);
+  }
+  .year-filter option {
+    position: relative;
+    justify-content: center;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font: inherit;
+    font-weight: 400;
+    cursor: pointer;
+  }
+  .year-filter option::checkmark {
+    position: absolute;
+    left: 8px;
+  }
+  .year-filter option:checked {
+    font-weight: 600;
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+  }
+  .year-filter option:hover,
+  .year-filter option:focus-visible {
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .year-select {
+    transition:
+      translate 260ms var(--motion-spring),
+      scale 260ms var(--motion-spring);
+  }
+  .year-select:hover {
+    translate: 0 -3px;
+    scale: 1.02;
+  }
+  .year-select:hover select {
+    box-shadow: 0 5px 10px color-mix(in srgb, var(--md-sys-color-shadow) 8%, transparent);
+    border-radius: 16px;
+  }
+  .year-select:active {
+    translate: 0 0;
+    scale: 0.96;
+  }
 }
 .collection-search:has(input:focus-visible) {
   outline: 2px solid var(--md-sys-color-primary);
@@ -218,6 +314,7 @@
 .year-filter select:focus-visible {
   outline: 2px solid var(--md-sys-color-primary);
   outline-offset: -2px;
+  border-color: var(--md-sys-color-primary);
 }
 .collection-count {
   font-size: 11px;
@@ -1358,7 +1455,12 @@
     width: 100%;
   }
   .year-filter select {
+    width: 100%;
+    font-size: 11px;
+  }
+  .year-select {
     flex: 1;
+    width: auto;
   }
   .shelf-heading {
     display: block;

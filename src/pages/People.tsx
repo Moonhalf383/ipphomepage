@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, Search } from 'lucide-react';
+import { ArrowRight, BookOpen, ChevronDown, Search } from 'lucide-react';
 import { PawMark } from '../components/Mascot';
 import { PersonBook } from '../components/PersonBook';
 import { DemoPeopleNotice, usePeople } from '../content/PeopleProvider';
@@ -67,14 +67,17 @@ export function People() {
             </div>
             <label className="year-filter">
               年级
-              <select value={year} onChange={e => setYear(e.target.value)}>
-                <option value="all">全部年级</option>
-                {years.map(y => (
-                  <option key={y} value={y}>
-                    {y} 级
-                  </option>
-                ))}
-              </select>
+              <span className="year-select">
+                <select data-active={year !== 'all'} value={year} onChange={e => setYear(e.target.value)}>
+                  <option value="all">全部年级</option>
+                  {years.map(y => (
+                    <option key={y} value={y}>
+                      {y} 级
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={17} aria-hidden="true" />
+              </span>
             </label>
           </section>
           <p className="collection-count" role="status">

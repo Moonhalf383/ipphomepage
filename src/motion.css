@@ -657,9 +657,6 @@ table tbody tr,
       filter var(--motion-medium) var(--motion-standard);
   }
 
-  .person-book:hover .person-cover {
-    translate: 0 -3px;
-  }
   .person-book:hover .person-cover span:last-child {
     display: inline-block;
     rotate: 10deg;

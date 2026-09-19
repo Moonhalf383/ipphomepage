@@ -60,7 +60,7 @@ test('member books filter by group/year/search and expose full profiles and book
   await expect(page.locator('.person-book')).toHaveCount(12);
 });
 
-test('people search wraps its label while the year focus ring stays on the select', async ({ page }) => {
+test('people filters use custom surfaces while focus rings stay on the interactive controls', async ({ page }) => {
   await page.goto('/people');
 
   const search = page.getByRole('searchbox', { name: '搜索成员' });
@@ -71,6 +71,11 @@ test('people search wraps its label while the year focus ring stays on the selec
   await expect(search).toHaveCSS('outline-style', 'none');
 
   const year = page.getByRole('combobox', { name: '年级', exact: true });
+  const customizable = await page.evaluate(() => CSS.supports('appearance', 'base-select'));
+  await expect(year).toHaveCSS('appearance', customizable ? 'base-select' : 'none');
+  await expect(year).toHaveCSS('min-height', '48px');
+  await expect(year).toHaveCSS('border-radius', '12px');
+  await expect(page.locator('.year-select > svg')).toBeVisible();
   await year.focus();
   await expect(year.locator('xpath=..')).toHaveCSS('outline-style', 'none');
   await expect(year).toHaveCSS('outline-style', 'solid');
@@ -139,15 +144,23 @@ test('visible cards, artwork and UI switches use finite expressive motion', asyn
         .evaluate(e => getComputedStyle(e).scale)
     )
     .not.toBe('none');
-  await page.locator('.person-book').first().hover();
+  const firstPersonBook = page.locator('.person-book').first();
+  await firstPersonBook.hover();
   await expect
     .poll(() =>
-      page
-        .locator('.person-book .person-avatar')
-        .first()
-        .evaluate(e => getComputedStyle(e).translate)
+      firstPersonBook.locator('.person-avatar').evaluate(e => getComputedStyle(e).translate)
     )
     .not.toBe('none');
+  await expect
+    .poll(() =>
+      firstPersonBook.evaluate(book => {
+        const cover = book.querySelector<HTMLElement>('.person-cover');
+        const spine = book.querySelector<HTMLElement>('.person-spine');
+        if (!cover || !spine) throw new Error('Member book is missing its cover or spine');
+        return Math.abs(cover.getBoundingClientRect().top - spine.getBoundingClientRect().top);
+      })
+    )
+    .toBeLessThan(0.5);
 
   await page.goto('/projects');
   await moved('.project-card');
@@ -263,7 +276,9 @@ test('mobile bottom nav renders its icons and keeps the active label clear of th
   const geom = await active.evaluate(a => {
     const pill = getComputedStyle(a, '::before');
     const link = a.getBoundingClientRect();
-    const label = a.querySelector('span').getBoundingClientRect();
+    const labelElement = a.querySelector('span');
+    if (!labelElement) throw new Error('Active navigation link is missing its label');
+    const label = labelElement.getBoundingClientRect();
     return { pillBottom: parseFloat(pill.top) + parseFloat(pill.height), labelTop: label.top - link.top };
   });
   expect(geom.labelTop).toBeGreaterThanOrEqual(geom.pillBottom);
