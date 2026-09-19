@@ -76,7 +76,7 @@ md-text-button > svg,
   clip-path: inset(0 100% 0 0 round 0.16em);
   transition: clip-path var(--motion-long) var(--motion-emphasized-decelerate);
 }
-.counting-line.is-lit .title-plaque {
+.counting-line.is-lit:hover .title-plaque {
   clip-path: inset(0 0 0 0 round 0.16em);
 }
 .title-counter {

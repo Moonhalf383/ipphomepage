@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { CSSProperties, PointerEvent, ReactNode } from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useArtParallax } from '../motion';
 import { CatSignature, PawMark } from '../components/Mascot';
 import { ProjectCard } from '../components/ProjectCard';
@@ -31,29 +31,46 @@ function CountingLine({ children }: { children: ReactNode }) {
   const [lit, setLit] = useState(false);
   const [count, setCount] = useState(-1);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
+  const active = useRef(false);
+  const stop = useCallback(() => {
+    active.current = false;
+    clearTimeout(timer.current);
+    setLit(false);
+  }, []);
+  useEffect(() => {
+    const stopWhenHidden = () => {
+      if (document.hidden) stop();
+    };
+    window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', stopWhenHidden);
+    return () => {
+      active.current = false;
+      clearTimeout(timer.current);
+      window.removeEventListener('blur', stop);
+      document.removeEventListener('visibilitychange', stopWhenHidden);
+    };
+  }, [stop]);
   function enter(event: PointerEvent<HTMLSpanElement>) {
-    if (lit || event.pointerType !== 'mouse') return;
+    if (active.current || event.pointerType !== 'mouse') return;
     if (!matchMedia('(prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine)').matches) return;
+    active.current = true;
     setCount(-1);
     setLit(true);
     const tick = (n: number) => {
+      if (!active.current) return;
       setCount(n);
       timer.current = setTimeout(() => tick(n + 1), stepDelay(n));
     };
     timer.current = setTimeout(() => tick(0), FILL_MS);
   }
   // The number stays mounted on the way out so the plaque wipes it away instead of dropping it.
-  const leave = () => {
-    clearTimeout(timer.current);
-    setLit(false);
-  };
   return (
     <span
       className={`title-line counting-line ${lit ? 'is-lit' : ''}`}
       aria-hidden="true"
       onPointerEnter={enter}
-      onPointerLeave={leave}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
     >
       {children}
       <span className="title-plaque">
