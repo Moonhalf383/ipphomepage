@@ -46,26 +46,28 @@ export function Projects() {
         ))}
       </div>
       {!visible.length && <p className="collection-empty">这一类项目暂未收录。</p>}
-      <section className="creation-path" aria-labelledby="creation-title">
-        <div>
-          <h2 id="creation-title">上手 Dora SSR</h2>
-        </div>
-        <div className="creation-links">
-          <ExternalLink href="https://dora-ssr.net/docs/tutorial/quick-start">
-            <BookOpen size={20} />
-            <span>01 / 阅读入门文档</span>
-          </ExternalLink>
-          <ExternalLink href="https://github.com/IppClub/Dora-Example">
-            <Code2 size={20} />
-            <span>02 / 动手修改示例</span>
-          </ExternalLink>
-          <Link to="/events">
-            <Trophy size={20} />
-            <span>03 / 关注赛事展台</span>
-            <ArrowRight size={18} />
-          </Link>
-        </div>
-      </section>
+      <div className="creation-path-hitbox">
+        <section className="creation-path" aria-labelledby="creation-title">
+          <div>
+            <h2 id="creation-title">上手 Dora SSR</h2>
+          </div>
+          <div className="creation-links">
+            <ExternalLink href="https://dora-ssr.net/docs/tutorial/quick-start">
+              <BookOpen size={20} />
+              <span>01 / 阅读入门文档</span>
+            </ExternalLink>
+            <ExternalLink href="https://github.com/IppClub/Dora-Example">
+              <Code2 size={20} />
+              <span>02 / 动手修改示例</span>
+            </ExternalLink>
+            <Link to="/events">
+              <Trophy size={20} />
+              <span>03 / 关注赛事展台</span>
+              <ArrowRight size={18} />
+            </Link>
+          </div>
+        </section>
+      </div>
       <p className="collection-footer-note">项目说明依据官方仓库整理，许可细节以各仓库为准。</p>
     </div>
   );

@@ -703,6 +703,9 @@ md-text-button svg {
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
+.service-card-hitbox {
+  min-width: 0;
+}
 .service-card {
   position: relative;
   border-radius: var(--radius-xl);
@@ -713,12 +716,13 @@ md-text-button svg {
     transform 0.25s var(--ease);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
 }
-.service-card:hover {
+.service-card-hitbox:hover > .service-card {
   box-shadow: 0 3px 8px #00000014;
-  transform: translateY(-4px);
 }
-.service-card:active {
+.service-card-hitbox:active > .service-card {
   transform: translateY(-1px);
 }
 .blog-card {
@@ -755,7 +759,7 @@ md-text-button svg {
   width: 20px;
   transition: transform 0.2s;
 }
-.service-card:hover .card-arrow {
+.service-card-hitbox:hover .card-arrow {
   transform: translate(2px, -2px);
 }
 .service-card h3 {
@@ -1074,6 +1078,13 @@ md-text-button svg {
   border: 1px solid var(--md-sys-color-outline-variant);
   border-radius: 24px;
   padding: 32px;
+}
+.surface-card-hitbox {
+  min-width: 0;
+}
+.surface-card-hitbox > .surface-card {
+  box-sizing: border-box;
+  height: 100%;
 }
 .page-symbol {
   width: 64px;

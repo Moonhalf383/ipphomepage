@@ -30,11 +30,12 @@ export function PersonBook({ person }: { person: Person }) {
     setPanel(null);
   }
   return (
-    <article
-      className={`person-book ${person.links.length ? 'has-bookmarks' : ''}`}
-      data-tone={tone}
-      data-person-id={person.id}
-    >
+    <div className="person-book-hitbox">
+      <article
+        className={`person-book ${person.links.length ? 'has-bookmarks' : ''}`}
+        data-tone={tone}
+        data-person-id={person.id}
+      >
       <div className="person-spine" aria-hidden="true">
         <span>{person.year}</span>
         <span>I++</span>
@@ -105,6 +106,7 @@ export function PersonBook({ person }: { person: Person }) {
           <Button onClick={close}>关闭</Button>
         </div>
       </dialog>
-    </article>
+      </article>
+    </div>
   );
 }
