@@ -26,7 +26,7 @@ export function PeopleProvider({ children }: { children: ReactNode }) {
   });
   useEffect(() => {
     let active = true;
-    if (wantsDemoPeople()) {
+    if (import.meta.env.DEV && wantsDemoPeople()) {
       import('../dev/mockPeople')
         .then(module => {
           if (active) setData({ people: module.makeMockPeople(), isDemo: true, loading: false });
