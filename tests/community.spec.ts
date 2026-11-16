@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { THEME_PRESETS } from '../src/theme/presets';
+import { makeMockPeople } from '../src/dev/mockPeople';
 
 // 这些用例断言的是版式与交互，不是名单内容，所以统一跑在固定的演示成员上，
 // 真实 people.json 增删成员不会让它们变红。见 src/content/PeopleProvider.tsx。
@@ -81,6 +82,65 @@ test('people filters use custom surfaces while focus rings stay on the interacti
   await expect(year).toHaveCSS('outline-style', 'solid');
   await expect(year).toHaveCSS('outline-width', '2px');
   await expect(year).toHaveCSS('outline-offset', '-2px');
+});
+
+test('long member profiles keep themed scrollbars and remain readable in both modes', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => localStorage.setItem('ipp-theme', 'light'));
+  const people = makeMockPeople();
+  const description = '这是一段用于验证内嵌滚动区域的长简介。\n'.repeat(120);
+  people[0].description = description;
+  await page.route('**/src/dev/mockPeople.ts*', route =>
+    route.fulfill({
+      contentType: 'application/javascript',
+      body: `export const makeMockPeople = () => ${JSON.stringify(people)};`
+    })
+  );
+  await page.goto('/people');
+  const opener = page.locator('[data-person-id="dev-person-01"]').getByRole('button', { name: /完整简介/ });
+  const dialog = page.getByRole('dialog');
+  let previousColor = '';
+  for (const mode of ['light', 'dark']) {
+    await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
+    await opener.click();
+    await expect(dialog.locator('.person-full-description')).toHaveText(description);
+    await expect(dialog).toHaveCSS('overscroll-behavior-y', 'contain');
+    expect(await dialog.evaluate(e => e.scrollHeight > e.clientHeight && e.scrollWidth <= e.clientWidth)).toBe(true);
+    const scrollbar = await dialog.evaluate(e => {
+      if (CSS.supports('selector(::-webkit-scrollbar)')) {
+        const thumb = getComputedStyle(e, '::-webkit-scrollbar-thumb');
+        return {
+          color: thumb.backgroundColor,
+          width: getComputedStyle(e, '::-webkit-scrollbar').width,
+          radius: thumb.borderRadius
+        };
+      }
+      return { color: getComputedStyle(e).scrollbarColor, width: getComputedStyle(e).scrollbarWidth, radius: null };
+    });
+    expect(scrollbar.color).not.toBe('auto');
+    expect(scrollbar.color).not.toBe('rgba(0, 0, 0, 0)');
+    expect(scrollbar.color).not.toBe(previousColor);
+    expect(scrollbar.width).toBe(scrollbar.radius === null ? 'thin' : '10px');
+    if (scrollbar.radius !== null) expect(scrollbar.radius).toBe('999px');
+    previousColor = scrollbar.color;
+    await dialog.locator('.person-full-description').hover();
+    const backgroundScroll = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, 400);
+    await expect.poll(() => dialog.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => scrollY)).toBe(backgroundScroll);
+    await page.screenshot({ path: info.outputPath(`long-profile-${mode}.png`) });
+    await dialog.getByRole('button', { name: '关闭', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await expect(opener).toBeFocused();
+    if (mode === 'light') await page.getByRole('button', { name: '切换深色模式' }).click();
+  }
+  await page.emulateMedia({ forcedColors: 'active' });
+  await opener.click();
+  await expect(dialog).toHaveCSS('scrollbar-color', 'auto');
+  await expect(dialog).toHaveCSS('scrollbar-width', 'auto');
+  if (await page.evaluate(() => CSS.supports('selector(::-webkit-scrollbar)'))) {
+    expect(await dialog.evaluate(e => getComputedStyle(e, '::-webkit-scrollbar').width)).toBe('auto');
+  }
 });
 
 test('projects show real sources and events have an honest empty state', async ({ page }, info) => {
