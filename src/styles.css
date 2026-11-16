@@ -110,6 +110,40 @@
 * {
   box-sizing: border-box;
 }
+/* Share theme-aware scrollbars across the page, dialogs, panes and form fields.
+   Keep system scrollbars in forced-colors mode. */
+@media (forced-colors: none) {
+  /* Non-auto standard properties override WebKit's rounded thumb styling. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--md-sys-color-outline) transparent;
+    }
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  .m3-dialog::-webkit-scrollbar-track {
+    margin: 20px 0;
+  }
+  ::-webkit-scrollbar-thumb {
+    min-height: 32px;
+    min-width: 32px;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--md-sys-color-outline);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover,
+  ::-webkit-scrollbar-thumb:active {
+    background-color: var(--md-sys-color-primary);
+  }
+}
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 24px;
@@ -1251,6 +1285,7 @@ input[type='radio'] {
   color: var(--md-sys-color-on-surface);
   width: min(480px, calc(100vw - 40px));
   box-shadow: 0 10px 30px #0003;
+  overscroll-behavior: contain;
 }
 .m3-dialog::backdrop {
   background: #0007;
