@@ -74,7 +74,7 @@ test('production ignores all dev exceptions and keeps exact CSRF/admin checks', 
       .post('/api/admin/login')
       .set('Origin', 'https://iplusplus.club')
       .send({ password: 'wrong' })
-      .expect(401);
+      .expect(410);
   } finally {
     db.close();
   }

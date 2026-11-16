@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, NavLink, Link, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, NavLink, Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import {
   ArrowUpRight,
   BookOpen,
@@ -15,6 +15,8 @@ import { Home } from './pages/Home';
 import { Assessment } from './pages/Assessment';
 import { Verify } from './pages/Verify';
 import { Admin } from './pages/Admin';
+import { Account } from './pages/Account';
+import { AccountProvider, useAccount } from './AccountProvider';
 import { People } from './pages/People';
 import { Projects } from './pages/Projects';
 import { Events } from './pages/Events';
@@ -31,8 +33,10 @@ import './styles.css';
 import './motion.css';
 import './theme/theme.css';
 import './community.css';
+import './accounts.css';
 applyPreferences(readPreferences(), false);
 function App() {
+  const { user } = useAccount();
   const main = useRef<HTMLElement>(null);
   const location = useLocation();
   const [menu, setMenu] = useState(false);
@@ -57,7 +61,7 @@ function App() {
   }, []);
   usePageMotion(main, location.pathname);
   useEffect(() => {
-    document.title = `${location.pathname.startsWith('/assessment') ? '素质问卷' : location.pathname.startsWith('/verify') ? '证书验真' : location.pathname.startsWith('/admin') ? '社团管理' : location.pathname.startsWith('/people') ? '成员名录' : location.pathname.startsWith('/projects') ? '项目工坊' : location.pathname.startsWith('/events') ? '赛事展台' : location.pathname.startsWith('/consensus') ? '社区共识' : '让好奇心，不断加一'} · I++ Club`;
+    document.title = `${location.pathname.startsWith('/account') ? '我的账号' : location.pathname.startsWith('/assessment') ? '素质问卷' : location.pathname.startsWith('/verify') ? '证书验真' : location.pathname.startsWith('/admin') ? '社团管理' : location.pathname.startsWith('/people') ? '成员名录' : location.pathname.startsWith('/projects') ? '项目工坊' : location.pathname.startsWith('/events') ? '赛事展台' : location.pathname.startsWith('/consensus') ? '社区共识' : '让好奇心，不断加一'} · I++ Club`;
   }, [location.pathname]);
   return (
     <>
@@ -140,6 +144,7 @@ function App() {
           </div>
         </div>
         <div className="header-actions">
+          <Link className="account-link" to="/account">{user ? '我的账号' : '登录 / 注册'}</Link>
           <ExternalLink href="https://ippclub.org/" className="header-blog">
             社团博客
           </ExternalLink>
@@ -158,6 +163,8 @@ function App() {
           <Route path="/verify" element={<Verify />} />
           <Route path="/verify/:id" element={<Verify />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/account/admin" element={<Navigate to="/account?next=/admin" replace />} />
           <Route
             path="*"
             element={
@@ -202,7 +209,7 @@ createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <PeopleProvider>
-        <App />
+        <AccountProvider><App /></AccountProvider>
       </PeopleProvider>
     </BrowserRouter>
   </React.StrictMode>

@@ -1769,13 +1769,14 @@ progress::-moz-progress-bar {
   grid-template-columns: repeat(4, 1fr);
   background: var(--md-sys-color-surface-container-low);
   border-radius: 20px;
-  padding: 25px 15px;
+  padding: 18px 12px;
 }
 .admin-stats > div {
-  padding: 5px 20px;
+  min-width: 0;
+  padding: 2px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   border-left: 1px solid var(--md-sys-color-outline-variant);
 }
 .admin-stats > div:first-child {
@@ -1786,9 +1787,13 @@ progress::-moz-progress-bar {
   color: var(--md-sys-color-on-surface-variant);
 }
 .admin-stats strong {
-  font-size: 23px;
+  font-size: 22px;
+  line-height: 1.4;
   color: var(--md-sys-color-primary);
   font-weight: 600;
+}
+.admin-stats .admin-status {
+  font-size: 18px;
 }
 .admin-stats small {
   font-size: 13px;
@@ -2616,10 +2621,17 @@ td .chip {
     font-size: 29px;
   }
   .admin-stats {
-    padding: 18px 3px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 8px 14px;
   }
   .admin-stats > div {
-    padding: 5px 13px;
+    padding: 12px;
+  }
+  .admin-stats > div:nth-child(3) {
+    border-left: 0;
+  }
+  .admin-stats > div:nth-child(n+3) {
+    border-top: 1px solid var(--md-sys-color-outline-variant);
   }
   .admin-stats strong {
     font-size: 18px;

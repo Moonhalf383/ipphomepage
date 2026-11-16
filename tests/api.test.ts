@@ -12,7 +12,7 @@ import type { Answers, Question } from '../shared/types.ts';
 const origin = 'http://localhost:5173';
 const password = 'test-only-strong-password';
 function setup(t: TestContext, disableRateLimit = true) {
-  const { app, db } = createApp({ dbPath: ':memory:', adminPassword: password, origin, disableRateLimit });
+  const { app, db } = createApp({ dbPath: ':memory:', adminPassword: password, origin, disableRateLimit, allowLegacyAdmin: true, requireAccount: false });
   t.after(() => db.close());
   const admin = request.agent(app),
     user = request.agent(app);
@@ -232,11 +232,11 @@ test('rate limiting, missing password and production configuration fail closed',
   for (let i = 0; i < 5; i++)
     await request(app).post('/api/admin/login').set('Origin', origin).send({ password: 'wrong' }).expect(401);
   await request(app).post('/api/admin/login').set('Origin', origin).send({ password }).expect(429);
-  const empty = createApp({ dbPath: ':memory:', adminPassword: '', origin });
+  const empty = createApp({ dbPath: ':memory:', adminPassword: '', origin, allowLegacyAdmin: true });
   t.after(() => empty.db.close());
   await request(empty.app).post('/api/admin/login').set('Origin', origin).send({ password: '' }).expect(503);
   assert.throws(() => createApp({ production: true, origin: 'http://iplusplus.club', adminPassword: password }));
-  assert.throws(() => createApp({ production: true, origin: 'https://iplusplus.club', adminPassword: 'short' }));
+
 });
 test('production security headers and cookie flags are applied', async t => {
   const { app, db } = createApp({
@@ -247,13 +247,7 @@ test('production security headers and cookie flags are applied', async t => {
   });
   t.after(() => db.close());
   const login = await request(app)
-    .post('/api/admin/login')
-    .set('Origin', 'https://iplusplus.club')
-    .send({ password })
-    .expect(200);
-  assert.match(login.headers['set-cookie'][0], /Secure/);
-  assert.match(login.headers['set-cookie'][0], /HttpOnly/);
-  assert.match(login.headers['set-cookie'][0], /SameSite=Strict/);
+    .post('/api/admin/login').set('Origin', 'https://iplusplus.club').send({ password }).expect(410);
   assert.match(login.headers['content-security-policy'], /script-src 'self'/);
   assert.match(login.headers['strict-transport-security'], /max-age=/);
   assert.equal(login.headers['cache-control'], 'no-store');
@@ -266,7 +260,7 @@ test('production security headers and cookie flags are applied', async t => {
 test('SQLite persists attempt and certificate records across app restart', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ipp-test-'));
   const dbPath = join(dir, 'club.sqlite');
-  const first = createApp({ dbPath, origin, adminPassword: password });
+  const first = createApp({ dbPath, origin, adminPassword: password, allowLegacyAdmin: true, requireAccount: false });
   const admin = request.agent(first.app),
     user = request.agent(first.app);
   let closed = false;
@@ -283,7 +277,7 @@ test('SQLite persists attempt and certificate records across app restart', async
     ).body;
     first.db.close();
     closed = true;
-    const second = createApp({ dbPath, origin, adminPassword: password });
+    const second = createApp({ dbPath, origin, adminPassword: password, allowLegacyAdmin: true, requireAccount: false });
     try {
       const persisted = (await request(second.app).get(`/api/certificates/${r.certificateId}`).expect(200)).body;
       assert.equal(persisted.displayName, '持久化测试');

@@ -12,6 +12,8 @@ import { answersSchema, drawQuestions, grade, questionSchema, validateAnswers } 
 import { certificatePng } from './certificate.ts';
 import { normalizeOrigin, trustedOrigins } from './origin.ts';
 import type { Answers, Question, Result, Settings } from '../shared/types.ts';
+import { installAccounts } from './accounts.ts';
+import { smtpMailer, type Mailer } from './mail.ts';
 
 type Row = Record<string, any>;
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -24,14 +26,21 @@ export function createApp(
     production?: boolean;
     developmentOrigins?: string[];
     disableRateLimit?: boolean;
+    mailer?: Mailer;
+    bulkMailer?: Mailer;
+    initialPresidentEmail?: string;
+    allowLegacyAdmin?: boolean;
+    requireAccount?: boolean;
   } = {}
 ) {
   const production = options.production ?? process.env.NODE_ENV === 'production';
   const origin = normalizeOrigin(options.origin ?? process.env.PUBLIC_ORIGIN ?? 'http://localhost:5173');
   const allowedOrigins = trustedOrigins(origin, production, options.developmentOrigins);
   const adminPassword = options.adminPassword ?? process.env.ADMIN_PASSWORD ?? '';
-  if (production && (!origin.startsWith('https://') || adminPassword.length < 16))
-    throw new Error('生产环境需要 HTTPS PUBLIC_ORIGIN 及至少 16 位 ADMIN_PASSWORD');
+  if (production && !origin.startsWith('https://'))
+    throw new Error('生产环境需要 HTTPS PUBLIC_ORIGIN');
+  const allowLegacyAdmin = !production && (options.allowLegacyAdmin ?? false);
+  const requireAccount = options.requireAccount ?? true;
   const dbPath = options.dbPath ?? process.env.DATABASE_PATH ?? './data/club.sqlite';
   if (dbPath !== ':memory:') mkdirSync(dirname(resolve(dbPath)), { recursive: true });
   const db = new DatabaseSync(dbPath);
@@ -116,7 +125,13 @@ export function createApp(
     });
   app.use('/api', limiter(300));
   const cookies = { httpOnly: true, sameSite: 'strict' as const, secure: production, path: '/' };
+  const accounts = installAccounts(app, db, {
+    production, origin, disableRateLimit: options.disableRateLimit,
+    mailer: options.mailer ?? smtpMailer(), bulkMailer: options.bulkMailer ?? smtpMailer('BULK_'),
+    initialPresidentEmail: options.initialPresidentEmail ?? process.env.INITIAL_PRESIDENT_EMAIL
+  });
   const admin: express.RequestHandler = (req, res, next) => {
+    if (!allowLegacyAdmin || accounts.current(req)) return accounts.requireAdmin(req, res, next);
     const token = req.cookies.ipp_admin;
     const session =
       typeof token === 'string' &&
@@ -129,7 +144,10 @@ export function createApp(
   };
   function ownAttempt(req: express.Request): Row {
     const row = db.prepare('SELECT * FROM attempts WHERE id=?').get(String(req.params.id)) as Row | undefined;
-    if (!row || typeof req.cookies.ipp_guest !== 'string' || row.owner !== hash(req.cookies.ipp_guest)) {
+    const owns = row && (row.userId
+      ? accounts.current(req)?.id === row.userId
+      : typeof req.cookies.ipp_guest === 'string' && row.owner === hash(req.cookies.ipp_guest));
+    if (!owns) {
       throw Object.assign(new Error('答题记录不存在或当前浏览器无权访问'), { status: 404 });
     }
     return row;
@@ -169,33 +187,39 @@ export function createApp(
       })
       .parse(req.body);
     const s = settings();
+    const user = accounts.current(req);
+    if (s.enabled && requireAccount && !user) {
+      res.status(401).json({ error: '请先登录，再开始正式问卷' }); return;
+    }
     const selected = drawQuestions(questions(), s.questionCount);
     let token = req.cookies.ipp_guest;
     if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) token = randomBytes(32).toString('hex');
     res.cookie('ipp_guest', token, { ...cookies, maxAge: 24 * HOUR });
     const now = Date.now(),
       id = randomUUID();
-    // At most one unfinished attempt per browser, to avoid repeated draws for easier questions.
+    const owner = user ? `user:${user.id}` : hash(token);
+    // At most one unfinished attempt per account or anonymous browser.
     const existing = db
       .prepare(
         'SELECT * FROM attempts WHERE owner=? AND result IS NULL AND expiresAt>? ORDER BY createdAt DESC LIMIT 1'
       )
-      .get(hash(token), now) as Row | undefined;
+      .get(owner, now) as Row | undefined;
     if (existing) {
       res.json(publicAttempt(existing));
       return;
     }
     db.prepare(
-      'INSERT INTO attempts (id,owner,questions,settings,displayName,demo,createdAt,expiresAt) VALUES (?,?,?,?,?,?,?,?)'
+      'INSERT INTO attempts (id,owner,questions,settings,displayName,demo,createdAt,expiresAt,userId) VALUES (?,?,?,?,?,?,?,?,?)'
     ).run(
       id,
-      hash(token),
+      owner,
       JSON.stringify(selected),
       JSON.stringify(s),
       input.displayName,
       s.enabled ? 0 : 1,
       now,
-      now + HOUR
+      now + HOUR,
+      user?.id ?? null
     );
     res.status(201).json(publicAttempt(db.prepare('SELECT * FROM attempts WHERE id=?').get(id) as Row));
   });
@@ -288,6 +312,7 @@ export function createApp(
     });
   });
   app.post('/api/admin/login', limiter(5), (req, res) => {
+    if (!allowLegacyAdmin) { res.status(410).json({ error: '请使用邮箱账号登录' }); return; }
     const { password } = z.object({ password: z.string().max(512) }).parse(req.body);
     if (!adminPassword) {
       res.status(503).json({ error: '管理员尚未配置，请在服务器设置 ADMIN_PASSWORD' });
@@ -303,17 +328,19 @@ export function createApp(
     res.cookie('ipp_admin', token, { ...cookies, maxAge: 8 * HOUR }).json({ ok: true });
   });
   app.post('/api/admin/logout', admin, (req, res) => {
-    db.prepare('DELETE FROM sessions WHERE token=?').run(hash(req.cookies.ipp_admin));
+    if (typeof req.cookies.ipp_session === 'string') db.prepare('DELETE FROM account_sessions WHERE token=?').run(hash(req.cookies.ipp_session));
+    if (typeof req.cookies.ipp_admin === 'string') db.prepare('DELETE FROM sessions WHERE token=?').run(hash(req.cookies.ipp_admin));
+    res.clearCookie('ipp_session', cookies);
     res.clearCookie('ipp_admin', cookies).json({ ok: true });
   });
-  app.get('/api/admin', admin, (_req, res) => {
+  app.get('/api/admin', admin, (req, res) => {
     const attempts = (
       db
-        .prepare('SELECT id,displayName,demo,createdAt,result FROM attempts ORDER BY createdAt DESC LIMIT 100')
+        .prepare('SELECT a.id,a.displayName,a.demo,a.createdAt,a.result,a.userId,u.email FROM attempts a LEFT JOIN users u ON u.id=a.userId ORDER BY a.createdAt DESC LIMIT 100')
         .all() as Row[]
     ).map(r => ({ ...r, demo: !!r.demo, result: r.result ? JSON.parse(r.result) : null }));
     const certs = db.prepare('SELECT id,revoked FROM certificates ORDER BY rowid DESC LIMIT 100').all();
-    res.json({ settings: settings(), questions: questions(), attempts, certificates: certs });
+    res.json({ settings: settings(), questions: questions(), attempts, certificates: certs, user: accounts.current(req) ? accounts.publicUser(accounts.current(req)!) : null });
   });
   app.get('/api/admin/attempts/:id', admin, (req, res) => {
     const row = db.prepare('SELECT * FROM attempts WHERE id=?').get(String(req.params.id)) as Row | undefined;
@@ -421,5 +448,5 @@ export function createApp(
     res.status(500).json({ error: '服务暂时不可用，请稍后重试' });
   };
   app.use(onError);
-  return { app, db };
+  return { app, db, accounts };
 }

@@ -30,6 +30,7 @@ export const questionSchema = z
     }
   });
 export const answersSchema = z.record(
+  z.string(),
   z.union([z.array(z.number().int()).max(8), z.string().max(2000), z.number().int()])
 );
 export function validateAnswers(questions: Question[], answers: Answers, complete = true) {

@@ -21,13 +21,14 @@
     "express-rate-limit": "^8.0.1",
     "helmet": "^8.1.0",
     "lucide-react": "^0.468.0",
+    "nodemailer": "^10.6.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.6.0",
     "sharp": "^0.35.4",
     "tsx": "^4.19.4",
-    "zod": "^3.25.0"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
@@ -36,6 +37,7 @@
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.2",
     "@types/node": "^24.0.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

@@ -16,7 +16,9 @@ import {
 import type { Answers, Attempt, PublicQuestion, Result, Settings } from '../../shared/types';
 import { typeLabels } from '../../shared/types';
 import { api, Button, date, Loading, message, Notice } from '../ui';
+import { useAccount } from '../AccountProvider';
 export function Assessment() {
+  const { user, ready } = useAccount();
   const { id } = useParams();
   const navigate = useNavigate();
   const [config, setConfig] = useState<(Settings & { available: boolean }) | null>(null);
@@ -148,10 +150,10 @@ export function Assessment() {
                 <span className="status-dot" />
                 {config?.enabled ? '正式审核已开放' : '演示体验'}
               </span>
-              <span className="subtle">无需注册</span>
+              <span className="subtle">{user ? user.displayName : config?.enabled ? '登录后作答' : '可免登录体验'}</span>
             </div>
             <h2>开始答题</h2>
-            <p>填一个昵称即可开始。</p>
+            <p>{user ? '准备好后，就开始吧。' : config?.enabled ? '登录账号，保存你的问卷成绩。' : '填一个昵称，体验社区规则问卷。'}</p>
             {error && <Notice tone="error">{error}</Notice>}
             {!config ? (
               error ? (
@@ -161,6 +163,8 @@ export function Assessment() {
               ) : (
                 <Loading />
               )
+            ) : config.enabled && !user ? (
+              ready ? <Link className="link-button" to="/account?next=/assessment">登录 / 注册 <ArrowRight size={18} /></Link> : <Loading />
             ) : (
               <>
                 <div className="quiz-facts">
@@ -216,7 +220,7 @@ export function Assessment() {
                       数据如何保存与公开
                     </summary>
                     <p>
-                      系统保存昵称、答案、分数与时间。正式通过后，昵称、分数、签发时间和规则版本可通过证书编号公开查询；答案仅管理员可见。匿名答题无法核实本人身份，证书仅证明本次问卷达标。
+                      系统保存昵称、答案、分数与时间。登录作答的记录会关联你的账号，管理员可查看成绩与答案。正式通过后，昵称、分数、签发时间和规则版本可通过证书编号公开查询；邮箱不会公开。证书仅证明本次问卷达标。
                     </p>
                   </details>
                   <label className="check-label">
@@ -268,7 +272,7 @@ export function Assessment() {
             <Fingerprint size={27} />
           </span>
           <h2>答题进度</h2>
-          <p>{attempt.demo ? '演示模式 · 不签发正式证书' : '正式审核 · 服务端评分'}</p>
+          <p>{attempt.demo ? '演示模式 · 不签发正式证书' : '正式问卷 · 成绩保存至账号'}</p>
           <div className="sidebar-divider" />
           <div className="progress-label">
             <span>计分题进度</span>
@@ -350,7 +354,7 @@ export function Assessment() {
       <dialog ref={confirmation} className="m3-dialog" aria-labelledby="submit-title">
         <CheckCircle2 size={28} />
         <h2 id="submit-title">确认提交这份问卷？</h2>
-        <p>已完成 {completed} 道计分题。提交后，服务端将按本次抽题时的规则评分，答案不可修改。</p>
+        <p>已完成 {completed} 道计分题。提交后将显示成绩，答案不可修改。</p>
         <div className="dialog-actions">
           <Button variant="text" onClick={() => confirmation.current?.close()}>
             继续检查
@@ -473,7 +477,7 @@ function ResultPage({ attempt, error: inheritedError }: { attempt: Attempt; erro
           {r.passed
             ? r.demo
               ? '你已达到演示问卷的通过标准。本次结果不具有正式认证效力。'
-              : '你已通过本次社区规则问卷，证书已由服务端签发。'
+              : '你已通过本次社区规则问卷，可以下载你的证书。'
             : '本次尚未达到通过标准。可以重新思考社区共识，再次尝试。'}
         </p>
       </div>
@@ -552,7 +556,6 @@ function ResultPage({ attempt, error: inheritedError }: { attempt: Attempt; erro
                 )}
               </div>
               <p className="small subtle">
-                图片由服务端生成。
                 {r.demo ? '演示图片无正式证书编号。' : '下载图片内含验真二维码；最终有效性以在线记录为准。'}
               </p>
             </>

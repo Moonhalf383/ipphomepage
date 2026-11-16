@@ -23,6 +23,9 @@ async function setMode(request: APIRequestContext, enabled: boolean) {
   ).toBeTruthy();
 }
 async function complete(page: Page, questions: Question[], formal: boolean) {
+  if (formal) {
+    await page.request.post('/api/auth/login', { headers: { Origin: origin }, data: { email: 'admin@example.com', password: 'browser-test-only-password' } });
+  }
   await page.goto('/assessment');
   await page.getByLabel('证书昵称', { exact: false }).fill('好奇心测试员');
   await page.getByRole('checkbox').check();
@@ -56,7 +59,7 @@ test('layout at narrow and tablet widths and accessible light/dark entry pages',
   test.skip(info.project.name !== 'desktop', 'Width matrix is run once');
   for (const width of [320, 375, 600, 768, 1024, 1920]) {
     await page.setViewportSize({ width, height: 900 });
-    for (const route of ['/', '/assessment', '/verify', '/admin']) {
+    for (const route of ['/', '/assessment', '/verify', '/admin', '/account']) {
       await page.goto(route);
       await expect(page.locator('main h1')).toBeVisible();
       const overflow = await page.evaluate(() => ({
@@ -71,7 +74,7 @@ test('layout at narrow and tablet widths and accessible light/dark entry pages',
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  for (const route of ['/', '/assessment', '/verify', '/admin']) {
+  for (const route of ['/', '/assessment', '/verify', '/admin', '/account']) {
     await page.goto(route);
     await expect(page.locator('main h1')).toBeVisible();
     for (const theme of ['light', 'dark']) {
@@ -140,9 +143,10 @@ test('formal certificate public verification and revocation', async ({ page, req
 test('admin UI CRUD, publish safeguard and logout', async ({ page, request }, info) => {
   await setMode(request, false);
   await page.goto('/admin');
-  await page.getByLabel('管理密码').fill('browser-test-only-password');
-  await page.getByRole('button', { name: '安全登录' }).click();
-  await expect(page.getByRole('heading', { name: '让共识，有条不紊。' })).toBeVisible();
+  await page.getByLabel('邮箱', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('密码', { exact: true }).fill('browser-test-only-password');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'I++Club控制台' })).toBeVisible();
   await page.getByRole('button', { name: '添加题目', exact: true }).click();
   await page.getByRole('combobox', { name: '题型', exact: true }).selectOption('text');
   await page.getByLabel('题目内容').fill('浏览器测试：你想分享什么？');
@@ -154,16 +158,16 @@ test('admin UI CRUD, publish safeguard and logout', async ({ page, request }, in
   await page.getByRole('button', { name: '删除：浏览器测试：修改后的题目' }).click();
   await page.getByRole('button', { name: '确认操作' }).click();
   await expect(page.getByRole('heading', { name: '浏览器测试：修改后的题目' })).toHaveCount(0);
-  await page.getByRole('button', { name: '审核设置', exact: true }).click();
+  await page.getByRole('button', { name: '问卷设置', exact: true }).click();
   await page.getByRole('switch').check();
   await expect(page.getByRole('button', { name: '保存设置' })).toBeDisabled();
-  await page.getByRole('checkbox', { name: /我代表社团确认/ }).check();
+  await page.getByRole('checkbox', { name: /已确认题目、答案和通过分数/ }).check();
   await page.getByRole('button', { name: '保存设置' }).click();
-  await expect(page.getByText('审核设置已保存', { exact: true })).toBeVisible();
+  await expect(page.getByText('问卷设置已保存', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({ path: info.outputPath('admin-settings.png'), fullPage: true });
   await page.getByRole('button', { name: '退出登录' }).click();
-  await expect(page.getByRole('heading', { name: '管理员登录', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '邮箱登录', exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 test('draft survives refresh and invalid verification has useful feedback', async ({ page, request }) => {
@@ -189,4 +193,173 @@ test('draft survives refresh and invalid verification has useful feedback', asyn
   await page.getByLabel('证书编号', { exact: true }).fill('00000000-0000-0000-0000-000000000000');
   await page.getByRole('button', { name: '查询证书' }).click();
   await expect(page.getByRole('alert')).toContainText('未找到该证书');
+});
+
+test('email registration entry, user management and mail queue UI', async ({ page, request }, info) => {
+  await page.goto('/account');
+  await page.getByRole('button', { name: '邮箱注册', exact: true }).click();
+  await page.getByLabel('邮箱', { exact: true }).fill(`new-${info.project.name}@example.com`);
+  await page.getByLabel('昵称', { exact: true }).fill('新朋友');
+  await page.getByLabel('设置密码', { exact: true }).fill('registration-test-password');
+  await page.getByLabel('确认密码', { exact: true }).fill('registration-test-password');
+  await page.getByRole('button', { name: '获取验证码' }).click();
+  await expect(page.getByRole('button', { name: /秒后重发/ })).toBeDisabled();
+  await page.getByLabel('邮箱验证码', { exact: true }).fill('000000');
+  await page.getByRole('button', { name: '完成注册', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('验证码无效');
+  await page.goto('/account/admin');
+  await page.getByLabel('邮箱', { exact: true }).fill('admin@example.com');
+  await page.getByLabel('密码', { exact: true }).fill('browser-test-only-password');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await page.getByRole('button', { name: '用户与邮件', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '用户与身份' })).toBeVisible();
+  await expect(page.getByText('admin@example.com', { exact: true })).toBeVisible();
+  await page.getByRole('checkbox', { name: '管理员', exact: true }).check();
+  await page.getByLabel('主题', { exact: true }).fill('测试公告');
+  await page.getByLabel('正文', { exact: true }).fill('欢迎一起探索。');
+  await page.getByRole('button', { name: '确认收件范围' }).click();
+  await expect(page.getByRole('dialog', { name: '发送这封邮件？' })).toBeVisible();
+  await page.getByRole('button', { name: '确认发送', exact: true }).click();
+  await expect(page.getByText('邮件已安排发送，共 1 位收件人。', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: info.outputPath('users-mail.png'), fullPage: true });
+});
+
+test('unified account routes, compact forms and full email password recovery', async ({ page }, info) => {
+  await page.goto('/account?mode=register');
+  await expect(page.getByRole('heading', { name: '邮箱注册', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '已有账号？' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '直接登录', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: '社团管理', exact: true }).click();
+  await expect(page).toHaveURL(/\/account\?next=\/admin$/);
+  await expect(page.getByRole('heading', { name: '邮箱登录', exact: true })).toBeVisible();
+  await expect(page.getByLabel('昵称', { exact: true })).toHaveCount(0);
+  await page.goto('/account/admin');
+  await expect(page).toHaveURL(/\/account\?next=\/admin$/);
+  await expect(page.getByRole('heading', { name: '邮箱登录', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '邮箱注册', exact: true }).click();
+  const email = `recovery-${info.project.name}@example.com`;
+  await page.getByLabel('邮箱', { exact: true }).fill(email);
+  await page.getByLabel('昵称', { exact: true }).fill('邮箱测试');
+  await page.getByLabel('设置密码', { exact: true }).fill('original-test-password');
+  await page.getByLabel('确认密码', { exact: true }).fill('original-test-password');
+  await page.getByRole('button', { name: '获取验证码', exact: true }).click();
+  async function lastCode() {
+    const response = await page.request.get('http://localhost:3001/__test/mail');
+    const messages = await response.json();
+    return messages.findLast((m: any) => m.to === email && m.subject.includes('验证码')).text.match(/\d{6}/)[0];
+  }
+  await page.getByLabel('邮箱验证码', { exact: true }).fill(await lastCode());
+  await page.getByRole('button', { name: '完成注册', exact: true }).click();
+  // This account came from an admin redirect; it has no management permission.
+  await expect(page.getByRole('alert')).toContainText('暂无管理权限');
+  await page.goto('/account');
+  await expect(page.getByRole('heading', { name: '我的账号', exact: true })).toBeVisible();
+  await expect(page.getByText('非社员', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '退出登录', exact: true }).click();
+  await page.getByRole('button', { name: '忘记密码？', exact: true }).click();
+  await page.getByLabel('邮箱', { exact: true }).fill(email);
+  await page.getByLabel('新密码', { exact: true }).fill('updated-test-password');
+  await page.getByLabel('确认密码', { exact: true }).fill('updated-test-password');
+  await page.getByRole('button', { name: '获取验证码', exact: true }).click();
+  await page.getByLabel('邮箱验证码', { exact: true }).fill(await lastCode());
+  await page.getByRole('button', { name: '保存新密码', exact: true }).click();
+  await expect(page.getByText('密码已更新，请使用新密码登录。', { exact: true })).toBeVisible();
+  await page.getByLabel('密码', { exact: true }).fill('updated-test-password');
+  await page.getByRole('button', { name: '登录', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '我的账号', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '退出登录', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '邮箱登录', exact: true })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('compact-login.png'), fullPage: true });
+  if (info.project.name === 'desktop') {
+    const box = await page.locator('.account-card').boundingBox();
+    expect(box!.width).toBeLessThanOrEqual(480);
+    expect(box!.y + box!.height).toBeLessThan(800);
+  }
+});
+
+test('console overview is compact and opening questionnaire settings preserves demo mode', async ({ page, request }, info) => {
+  await setMode(request, false);
+  const before = await (await request.get('/api/config')).json();
+  await page.request.post('/api/auth/login', { headers: { Origin: origin }, data: { email: 'admin@example.com', password: 'browser-test-only-password' } });
+  await page.goto('/admin');
+  const overview = page.getByRole('group', { name: '问卷概览', exact: true });
+  await expect(overview.getByText('演示中', { exact: true })).toBeVisible();
+  for (const label of ['问卷状态','启用题目','每份题数','通过分数']) await expect(overview.getByText(label, { exact: true })).toBeVisible();
+  await expect(page.getByText(/演示题库不能作为/)).toHaveCount(0);
+  await expect(overview.getByText('当前规则版本', { exact: true })).toHaveCount(0);
+  const first = await overview.locator(':scope > div').first().boundingBox();
+  expect(first!.height).toBeLessThan(100);
+  await page.getByRole('button', { name: '问卷设置', exact: true }).click();
+  await expect(page.getByRole('switch', { name: /开放正式问卷/ })).not.toBeChecked();
+  await expect(page.getByText(/规则 v/)).toBeVisible();
+  expect(await (await request.get('/api/config')).json()).toEqual(before);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: info.outputPath('console-overview.png'), fullPage: true });
+});
+
+test('answer records use independently scrolling list and detail panes with mobile return', async ({ page, request }, info) => {
+  await setMode(request, false);
+  await page.request.post('/api/auth/login', { headers: { Origin: origin }, data: { email: 'admin@example.com', password: 'browser-test-only-password' } });
+  const questions: Question[] = (await (await request.get('/api/admin')).json()).questions;
+  const answers = Object.fromEntries(questions.filter(q => q.points).map(q => [q.id,q.correct]));
+  for (const displayName of ['分栏测试甲', '分栏测试乙']) {
+    const attempt = await (await page.request.post('/api/attempts', { headers: { Origin: origin }, data: { displayName, consent: true } })).json();
+    expect((await page.request.post(`/api/attempts/${attempt.id}/submit`, { headers: { Origin: origin }, data: { answers } })).ok()).toBeTruthy();
+  }
+  await page.goto('/admin');
+  await page.getByRole('button', { name: '答题与证书', exact: true }).click();
+  const originalViewport = page.viewportSize()!;
+  const sizes = info.project.name === 'desktop' ? [{ width: 1280, height: 720 }, { width: 1440, height: 1000 }, { width: 1920, height: 1080 }] : [originalViewport];
+  for (const size of sizes) {
+    await page.setViewportSize(size);
+    const pane = await page.locator('.records-split').boundingBox();
+    expect(pane!.height).toBeGreaterThanOrEqual(size.height * 0.74);
+    expect(pane!.height).toBeLessThanOrEqual(size.height * 0.80);
+  }
+  await page.setViewportSize(originalViewport);
+  const list = page.getByRole('region', { name: '答题记录列表', exact: true });
+  const detail = page.getByRole('region', { name: '答案详情', exact: true });
+  await list.getByRole('button', { name: /分栏测试甲/ }).first().click();
+  await expect(detail.getByRole('heading', { name: '分栏测试甲 的答案' })).toBeVisible();
+  await expect(detail.locator('.record-answers li')).toHaveCount(14);
+  if (info.project.name === 'desktop') {
+    const a = await list.boundingBox(), b = await detail.boundingBox();
+    expect(b!.x).toBeGreaterThan(a!.x + a!.width - 1);
+    expect(Math.abs(a!.y-b!.y)).toBeLessThan(2);
+    const before = await page.evaluate(() => scrollY);
+    await detail.evaluate(el => { el.scrollTop = 600; });
+    expect(await detail.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+    expect(await page.evaluate(() => scrollY)).toBe(before);
+    await list.getByRole('button', { name: /分栏测试乙/ }).first().click();
+  } else {
+    await expect(list).not.toBeVisible();
+    await detail.getByRole('button', { name: '返回列表', exact: true }).click();
+    await expect(list).toBeVisible();
+    await expect(list.getByRole('button', { name: /分栏测试甲/ }).first()).toBeFocused();
+    await list.getByRole('button', { name: /分栏测试乙/ }).first().click();
+  }
+  await expect(detail.getByRole('heading', { name: '分栏测试乙 的答案' })).toBeVisible();
+  await expect(detail.locator('.record-answers li')).toHaveCount(14);
+  expect(await detail.evaluate(el => el.scrollTop)).toBe(0);
+  if (info.project.name === 'desktop') {
+    const firstId = await list.getByRole('button', { name: /分栏测试甲/ }).first().getAttribute('data-record-id');
+    const firstRecord = await (await page.request.get(`/api/admin/attempts/${firstId}`)).json();
+    let release: () => void = () => {};
+    const hold = new Promise<void>(resolve => { release = resolve; });
+    let arrived: () => void = () => {};
+    const waiting = new Promise<void>(resolve => { arrived = resolve; });
+    await page.route(`**/api/admin/attempts/${firstId}`, async route => {
+      arrived(); await hold; await route.fulfill({ json: firstRecord });
+    });
+    await list.getByRole('button', { name: /分栏测试甲/ }).first().click();
+    await waiting;
+    await list.getByRole('button', { name: /分栏测试乙/ }).first().click();
+    await expect(detail.locator('.record-answers li')).toHaveCount(14);
+    release();
+    await expect(detail.getByRole('heading', { name: '分栏测试乙 的答案' })).toBeVisible();
+    await page.unroute(`**/api/admin/attempts/${firstId}`);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: info.outputPath('records-split.png'), fullPage: true });
 });

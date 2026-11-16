@@ -3,7 +3,6 @@ import {
   Check,
   ClipboardList,
   Edit3,
-  Eye,
   LockKeyhole,
   LogOut,
   Plus,
@@ -12,15 +11,22 @@ import {
   Settings2,
   ShieldAlert,
   Trash2,
-  X
+  X,
+  UsersRound
 } from 'lucide-react';
-import type { Attempt, Question, QuestionType, Result, Settings } from '../../shared/types';
+import type { Question, QuestionType, Result, Settings } from '../../shared/types';
 import { typeLabels } from '../../shared/types';
 import { api, Button, date, Loading, message, Notice } from '../ui';
+import { Link, Navigate } from 'react-router-dom';
+import type { Account } from '../../shared/accounts';
+import { useAccount } from '../AccountProvider';
+import { Users } from './Users';
+import { Records } from './Records';
 type AdminData = {
+  user: Account | null;
   settings: Settings;
   questions: Question[];
-  attempts: { id: string; displayName: string; demo: boolean; createdAt: number; result: Result | null }[];
+  attempts: { id: string; displayName: string; email?: string; demo: boolean; createdAt: number; result: Result | null }[];
   certificates: { id: string; revoked: number }[];
 };
 const newQuestion = (): Question => ({
@@ -35,9 +41,9 @@ const newQuestion = (): Question => ({
   active: true
 });
 export function Admin() {
+  const { user, ready, refresh } = useAccount();
   const [data, setData] = useState<AdminData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -46,10 +52,12 @@ export function Admin() {
   const [editing, setEditing] = useState<Question | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
   const [reviewed, setReviewed] = useState(false);
-  const [detail, setDetail] = useState<(Attempt & { displayName: string }) | null>(null);
   const [confirm, setConfirm] = useState<{ title: string; text: string; action: () => Promise<void> } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
+    if (!ready) return;
+    if (!user || user.role !== 'admin') { setLoading(false); setData(null); return; }
+    setLoading(true);
     api<AdminData>('/admin')
       .then(d => {
         setData(d);
@@ -59,7 +67,7 @@ export function Admin() {
         if (message(e) !== '请先登录管理后台') setError(message(e));
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user?.id, user?.role, ready]);
   useEffect(() => {
     if (confirm) dialog.current?.showModal();
     else dialog.current?.close();
@@ -84,19 +92,6 @@ export function Admin() {
       setBusy(false);
     }
   }
-  async function login() {
-    setBusy(true);
-    setError('');
-    try {
-      await api('/admin/login', { password });
-      setPassword('');
-      await reload();
-    } catch (e) {
-      setError(message(e));
-    } finally {
-      setBusy(false);
-    }
-  }
   async function saveQuestion(q: Question) {
     await perform(async () => {
       await api(q.id ? `/admin/questions/${q.id}` : '/admin/questions', q, q.id ? 'PUT' : 'POST');
@@ -109,45 +104,10 @@ export function Admin() {
         <Loading />
       </div>
     );
-  if (!data)
-    return (
-      <div className="page narrow login-page">
-        <span className="page-symbol lavender">
-          <LockKeyhole size={30} />
-        </span>
-        <h1>照料我们的社区。</h1>
-        <p>管理题库、审核规则与签发记录。</p>
-        <section className="surface-card">
-          <h2>管理员登录</h2>
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              void login();
-            }}
-          >
-            <label className="field">
-              管理密码
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-                maxLength={512}
-              />
-            </label>
-            <Button className="full-button" disabled={busy || !password} onClick={() => void login()}>
-              <LockKeyhole size={17} />
-              {busy ? '正在验证…' : '安全登录'}
-            </Button>
-          </form>
-          {error && <Notice tone="error">{error}</Notice>}
-          <p className="small subtle">
-            管理密码由服务器环境变量 ADMIN_PASSWORD 配置，没有预设密码。会话在 8 小时后失效。
-          </p>
-        </section>
-      </div>
-    );
+  if (!data) {
+    if (!user) return <Navigate to="/account?next=/admin" replace />;
+    return <div className="page narrow"><Notice tone="error">{error || '你的账号暂无管理权限。'}</Notice><Link className="text-link" to="/account">返回我的账号</Link></div>;
+  }
   const filtered = data.questions.filter(q =>
     `${q.prompt} ${q.category} ${typeLabels[q.type]}`.toLowerCase().includes(query.toLowerCase())
   );
@@ -155,8 +115,7 @@ export function Admin() {
     <div className="page admin-page">
       <div className="admin-heading">
         <div>
-          <div className="eyebrow muted">CLUB CONSOLE</div>
-          <h1>让共识，有条不紊。</h1>
+          <h1>I++Club控制台</h1>
         </div>
         <Button
           variant="outlined"
@@ -168,6 +127,7 @@ export function Admin() {
               .then(() => {
                 setData(null);
                 setNotice('');
+                void refresh();
               })
               .catch(e => setError(message(e)))
               .finally(() => setBusy(false));
@@ -177,37 +137,33 @@ export function Admin() {
           退出登录
         </Button>
       </div>
-      <div className="admin-stats">
+      <div className="admin-stats" role="group" aria-label="问卷概览">
         <div>
-          <span>正式审核</span>
-          <strong>{data.settings.enabled ? '已开放' : '未开放 · 仅演示'}</strong>
+          <span>问卷状态</span>
+          <strong className="admin-status">{data.settings.enabled ? '已开放' : '演示中'}</strong>
         </div>
         <div>
-          <span>启用题目 / 全部</span>
+          <span>启用题目</span>
           <strong>
             {data.questions.filter(q => q.active).length} <small>/ {data.questions.length}</small>
           </strong>
         </div>
         <div>
-          <span>每份问卷 / 通过标准</span>
-          <strong>
-            {data.settings.questionCount} 题 <small>/ {data.settings.passScore} 分</small>
-          </strong>
+          <span>每份题数</span>
+          <strong>{data.settings.questionCount} <small>题</small></strong>
         </div>
         <div>
-          <span>当前规则版本</span>
-          <strong>v{data.settings.version}</strong>
+          <span>通过分数</span>
+          <strong>{data.settings.passScore} <small>分</small></strong>
         </div>
       </div>
-      {!data.settings.enabled && (
-        <Notice>演示题库不能作为已经批准的社团规则。请审核题目和评分规则，再在“审核设置”中明确开启正式审核。</Notice>
-      )}
       {error && <Notice tone="error">{error}</Notice>}
       {notice && <Notice tone="success">{notice}</Notice>}
       <div className="admin-tabs" role="group" aria-label="管理分类">
         {[
+          ['users', '用户与邮件', UsersRound],
           ['questions', '题库管理', ClipboardList],
-          ['settings', '审核设置', Settings2],
+          ['settings', '问卷设置', Settings2],
           ['records', '答题与证书', ShieldAlert]
         ].map(([key, label, Icon]) => {
           const I = Icon as typeof ClipboardList;
@@ -227,6 +183,7 @@ export function Admin() {
           );
         })}
       </div>
+      {tab === 'users' && data.user && <Users actor={data.user} />}
       {tab === 'questions' &&
         (editing ? (
           <QuestionEditor question={editing} onSave={saveQuestion} onCancel={() => setEditing(null)} busy={busy} />
@@ -294,14 +251,14 @@ export function Admin() {
         ))}
       {tab === 'settings' && draft && (
         <section className="surface-card settings-panel">
-          <h2>审核与抽题规则</h2>
-          <p>
-            分数按实际抽中客观题的总分归一化为 100 分，多选题不设部分分。每份问卷至少包含一道计分题，所有抽题均不重复。
-          </p>
+          <div className="card-top">
+            <h2>问卷设置</h2>
+            <span className="subtle">规则 v{data.settings.version}</span>
+          </div>
           <form
             onSubmit={e => {
               e.preventDefault();
-              void perform(() => api('/admin/settings', { ...draft, reviewed }, 'PUT'), '审核设置已保存');
+              void perform(() => api('/admin/settings', { ...draft, reviewed }, 'PUT'), '问卷设置已保存');
             }}
           >
             <div className="form-grid">
@@ -338,23 +295,19 @@ export function Admin() {
                 onChange={e => setDraft({ ...draft, enabled: e.target.checked })}
               />
               <span>
-                <strong>开放正式审核与证书签发</strong>
-                <small>关闭后，新问卷进入演示模式，未提交的正式问卷暂停提交；已签发证书继续有效。</small>
+                <strong>开放正式问卷</strong>
+                <small>开启后，登录用户可提交正式问卷，通过后获得证书。关闭时仅提供演示，未提交的正式问卷暂停，已签发证书仍有效。</small>
               </span>
             </label>
             {draft.enabled && !data.settings.enabled && (
               <label className="check-label review-confirm">
                 <input type="checkbox" checked={reviewed} onChange={e => setReviewed(e.target.checked)} required />
-                <span>我代表社团确认：已审核启用题库、标准答案与通过线，允许本系统按此规则签发正式问卷通过证书。</span>
+                <span>已确认题目、答案和通过分数，同意开放正式问卷并签发证书。</span>
               </label>
             )}
-            <Notice>
-              无需登录意味着无法可靠限制同一人的重考次数，也无法证明本人作答。系统只做 IP
-              频率限制；请勿将证书等同于实名身份或直接入社资格。
-            </Notice>
             <Button
               onClick={() =>
-                void perform(() => api('/admin/settings', { ...draft, reviewed }, 'PUT'), '审核设置已保存')
+                void perform(() => api('/admin/settings', { ...draft, reviewed }, 'PUT'), '问卷设置已保存')
               }
               disabled={busy || (draft.enabled && !data.settings.enabled && !reviewed)}
             >
@@ -364,116 +317,11 @@ export function Admin() {
           </form>
         </section>
       )}
-      {tab === 'records' && (
-        <section className="surface-card records-panel">
-          <h2>答题记录与证书</h2>
-          <p>显示最近 100 条记录。昵称为用户自填，无法确认真实身份；请谨慎处理答案中的个人信息。</p>
-          {data.attempts.length === 0 ? (
-            <div className="empty">
-              <ClipboardList size={38} />
-              <p>还没有答题记录，第一份探索正在路上。</p>
-            </div>
-          ) : (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>昵称 / 时间</th>
-                    <th>模式</th>
-                    <th>结果</th>
-                    <th>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.attempts.map(a => {
-                    const revoked = data.certificates.some(c => c.id === a.result?.certificateId && c.revoked);
-                    return (
-                      <tr key={a.id}>
-                        <td>
-                          <strong>{a.displayName}</strong>
-                          <small>{date(a.createdAt)}</small>
-                        </td>
-                        <td>
-                          <span className="chip">{a.demo ? '演示' : '正式'}</span>
-                        </td>
-                        <td>
-                          {a.result
-                            ? `${a.result.score} 分 · ${revoked ? '已撤销' : a.result.passed ? '通过' : '未通过'}`
-                            : '未提交'}
-                        </td>
-                        <td>
-                          <div className="row-actions">
-                            <Button
-                              variant="text"
-                              onClick={() =>
-                                void perform(
-                                  async () =>
-                                    setDetail(await api<Attempt & { displayName: string }>(`/admin/attempts/${a.id}`)),
-                                  ''
-                                )
-                              }
-                            >
-                              <Eye size={16} />
-                              答案
-                            </Button>
-                            {a.result?.certificateId && !revoked && (
-                              <Button
-                                variant="text"
-                                disabled={busy}
-                                onClick={() =>
-                                  setConfirm({
-                                    title: '撤销这份证书？',
-                                    text: '撤销后，公开验真页将显示无效，持有人将无法再次下载。已下载的图片不能远程删除。此操作不可恢复。',
-                                    action: async () => {
-                                      await perform(
-                                        () => api(`/admin/certificates/${a.result!.certificateId}/revoke`, {}),
-                                        '证书已撤销'
-                                      );
-                                    }
-                                  })
-                                }
-                              >
-                                撤销
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {detail && (
-            <div className="record-detail">
-              <div className="card-top">
-                <h3>{detail.displayName} 的答题快照</h3>
-                <button className="icon-button" aria-label="关闭答案详情" onClick={() => setDetail(null)}>
-                  <X size={20} />
-                </button>
-              </div>
-              {detail.questions.map((q, i) => {
-                const a = detail.answers[q.id];
-                return (
-                  <div key={q.id}>
-                    <h4>
-                      {i + 1}. {q.prompt}
-                    </h4>
-                    <p>
-                      {Array.isArray(a)
-                        ? a.map(n => q.options[n]).join('；')
-                        : a === undefined || a === ''
-                          ? '未作答'
-                          : String(a)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
+      {tab === 'records' && <Records attempts={data.attempts} certificates={data.certificates} busy={busy} onRevoke={id => setConfirm({
+        title: '撤销这份证书？',
+        text: '撤销后，验真页将显示证书无效，持有人将无法再次下载。已下载的图片会保留。此操作不可恢复。',
+        action: async () => { await perform(() => api(`/admin/certificates/${id}/revoke`, {}), '证书已撤销'); }
+      })} />}
       <dialog
         ref={dialog}
         className="m3-dialog"
