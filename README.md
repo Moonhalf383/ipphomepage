@@ -52,7 +52,7 @@ npm audit
 
 维护方式是 **JSON + 本地图片**，没有新增管理 CMS。详见 [CONTENT.md](CONTENT.md)。
 
-- `src/content/people.json`：正式成员与支持者，目前为空；头像放 `public/images/people/`。
+- `src/content/people.json`：正式成员与支持者；头像放 `public/images/people/`。服务器修改后的构建与同步步骤见 `CONTENT.md`。
 - `src/content/projects.json`：人工精选的项目资料和官方链接，可选封面放 `public/images/projects/`。不实时拉取 GitHub API、星数或活跃度。
 - `src/content/events.json`：赛事展示记录，目前为空；可选封面放 `public/images/events/`。支持时间、状态、社团参与身份和外部链接，不包含报名、投稿与评审系统。
 - 开发模式且正式名录为空时，`src/dev/mockPeople.ts` 生成固定种子的 **虚构演示人物**，页面明确标注。生产构建完全移除该模块及头像；正式无数据时首页不显示成员预览，书架显示真实空状态。添加真实资料后，开发环境也不再混入演示人物。

@@ -11,9 +11,37 @@
 
 Vite 启动/热更新/构建也会检查；图片不存在、重复 ID、危险 URL、路径越界、字段拼写错误和不合法的日期会报错，而不是静默带入生产。字符串会被去除首尾空白，可选数组/布尔字段补默认值。编辑者也应人工检查描述事实、外链可用性和授权状态，校验程序不能代替这些审核。
 
+## 当前服务器上的内容更新
+
+网站目录为 `/opt/iplusplus-club/`，发布工作区为 `/home/rhinestone/ipp-account-release/`。先确认修改的是哪一份；构建只读取命令所在项目目录的 JSON。
+
+若修改了发布工作区的成员配置，先同步到网站目录：
+
+```bash
+sudo install -o iplusplus -g iplusplus -m 644 \
+  /home/rhinestone/ipp-account-release/src/content/people.json \
+  /opt/iplusplus-club/src/content/people.json
+```
+
+如有新增或替换的头像，同时同步 `public/images/people/` 下对应文件。发布前备份当前 `dist/` 和配置，再执行：
+
+```bash
+sudo -u iplusplus sh -c '
+  set -e
+  cd /opt/iplusplus-club
+  npm run check:content
+  npm run build -- --outDir dist-next
+  rsync -a --exclude=index.html dist-next/ dist/
+  cp dist-next/index.html dist/index.html.next
+  mv dist/index.html.next dist/index.html
+'
+```
+
+构建成功后先更新资源，再切换页面入口。刷新 `/people` 查看结果，无需重启服务。将确认后的 JSON、头像同步到本地仓库并提交，保持本地、发布工作区和网站目录一致。
+
 ## 成员与支持者
 
-`src/content/people.json` 初始为 `{ "people": [] }`。下面只是填写格式，**不是实际成员**，图片需自行提供：
+编辑 `src/content/people.json` 的 `people` 数组。以下为字段示例，头像路径需对应实际文件：
 
 ```json
 {
