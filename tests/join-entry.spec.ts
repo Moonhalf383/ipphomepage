@@ -74,6 +74,12 @@ test('recruitment accent remains accessible in light and dark modes', async ({ p
   await page.goto('/');
   for (const theme of ['light', 'dark']) {
     await page.evaluate(theme => (document.documentElement.dataset.theme = theme), theme);
+    const token = theme === 'light' ? '--md-sys-color-primary' : '--md-sys-color-primary-container';
+    expect(
+      await page.locator('.join-entry').evaluate(e => getComputedStyle(e).getPropertyValue('--join-entry-bg').trim())
+    ).toBe(
+      await page.evaluate(token => getComputedStyle(document.documentElement).getPropertyValue(token).trim(), token)
+    );
     const results = await new AxeBuilder({ page })
       .include('.hero-actions')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])

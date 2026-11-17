@@ -5,8 +5,8 @@
   gap: 12px;
 }
 .hero-actions .hero-primary-actions .join-entry {
-  --join-entry-bg: #b93b25;
-  --join-entry-ink: #fff;
+  --join-entry-bg: var(--md-sys-color-primary);
+  --join-entry-ink: var(--md-sys-color-on-primary);
   min-height: 54px;
   padding: 14px 22px;
   font-size: 18px;
@@ -14,31 +14,37 @@
   background: var(--join-entry-bg);
   color: var(--join-entry-ink);
   white-space: nowrap;
-  box-shadow: 0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c);
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow));
 }
 .hero-actions .hero-primary-actions .hero-explore {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
   white-space: nowrap;
 }
 :root[data-theme='dark'] .hero-actions .hero-primary-actions .join-entry {
-  --join-entry-bg: #ffb59c;
-  --join-entry-ink: #4c1709;
+  --join-entry-bg: var(--md-sys-color-primary-container);
+  --join-entry-ink: var(--md-sys-color-on-primary-container);
+}
+:root[data-theme='dark'] .hero-actions .hero-primary-actions .hero-explore {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-primary);
 }
 @media (prefers-reduced-motion: no-preference) {
   .hero-actions .hero-primary-actions .join-entry:focus-visible {
     box-shadow:
-      0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c),
+      0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow)),
       0 0 0 5px color-mix(in srgb, var(--join-entry-bg) 20%, transparent);
   }
   .hero-actions .hero-primary-actions .join-entry:active {
     scale: 0.96;
-    box-shadow: 0 1px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow));
   }
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .hero-actions .hero-primary-actions .join-entry:hover {
     background: color-mix(in srgb, var(--join-entry-bg) 90%, var(--join-entry-ink));
     box-shadow:
-      0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c),
+      0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow)),
       0 7px 16px color-mix(in srgb, var(--join-entry-bg) 22%, transparent);
   }
   .hero-actions .hero-primary-actions .join-entry:hover > svg {
