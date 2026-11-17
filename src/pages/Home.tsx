@@ -19,6 +19,7 @@ import { ProjectCard } from '../components/ProjectCard';
 import { PersonBook } from '../components/PersonBook';
 import { DemoPeopleNotice, usePeople } from '../content/PeopleProvider';
 import { events, projects } from '../content';
+import '../join-banner.css';
 /* Hovering the second title line makes the copy literal: a plaque wipes across 不断加一 and i
    counts up in hex, easing in until it tops out around i = E and then holds that pace. */
 const FILL_MS = 420,
@@ -118,6 +119,12 @@ export function Home() {
   const featuredProjects = projects.filter(p => p.featured).slice(0, 3);
   return (
     <div className="home page">
+      {/* Temporary recruitment deployment entry; kept off the long-term feature branch. */}
+      <Link className="join-banner" to="/join">
+        <span className="join-banner-icon" aria-hidden="true"><HeartHandshake size={30} /></span>
+        <strong>加入我们</strong>
+        <span className="join-banner-action">查看面试安排 <ArrowRight size={21} aria-hidden="true" /></span>
+      </Link>
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
           <h1 id="hero-title" aria-label="让好奇心，不断加一。">
