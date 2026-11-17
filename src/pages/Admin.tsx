@@ -17,11 +17,13 @@ import {
 import type { Question, QuestionType, Result, Settings } from '../../shared/types';
 import { typeLabels } from '../../shared/types';
 import { api, Button, date, Loading, message, Notice } from '../ui';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import type { Account } from '../../shared/accounts';
 import { useAccount } from '../AccountProvider';
 import { Users } from './Users';
 import { Records } from './Records';
+import { Interviews } from './Interviews';
+import { useSwitchMotion } from '../motion';
 type AdminData = {
   user: Account | null;
   settings: Settings;
@@ -47,13 +49,17 @@ export function Admin() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState('questions');
+  const [params, setParams] = useSearchParams();
+  const tab = ['users', 'questions', 'settings', 'records', 'interviews'].includes(params.get('tab') ?? '') ? params.get('tab')! : 'questions';
+  const setTab = (value: string) => setParams({ tab: value });
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState<Question | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
   const [reviewed, setReviewed] = useState(false);
   const [confirm, setConfirm] = useState<{ title: string; text: string; action: () => Promise<void> } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  const surface = useRef<HTMLDivElement>(null);
+  useSwitchMotion(surface, `${!!data}:${tab}:${editing?.id ?? 'bank'}`);
   useEffect(() => {
     if (!ready) return;
     if (!user || user.role !== 'admin') { setLoading(false); setData(null); return; }
@@ -164,7 +170,8 @@ export function Admin() {
           ['users', '用户与邮件', UsersRound],
           ['questions', '题库管理', ClipboardList],
           ['settings', '问卷设置', Settings2],
-          ['records', '答题与证书', ShieldAlert]
+          ['records', '答题与证书', ShieldAlert],
+          ['interviews', '招新面试', ClipboardList]
         ].map(([key, label, Icon]) => {
           const I = Icon as typeof ClipboardList;
           return (
@@ -173,8 +180,10 @@ export function Admin() {
               aria-pressed={tab === key}
               className={tab === key ? 'active' : ''}
               onClick={() => {
-                setTab(key as string);
-                setEditing(null);
+                if (tab !== key) {
+                  setTab(key as string);
+                  setEditing(null);
+                }
               }}
             >
               <I size={18} />
@@ -183,6 +192,8 @@ export function Admin() {
           );
         })}
       </div>
+      <div className="console-content" ref={surface}>
+      {tab === 'interviews' && <Interviews />}
       {tab === 'users' && data.user && <Users actor={data.user} />}
       {tab === 'questions' &&
         (editing ? (
@@ -322,6 +333,7 @@ export function Admin() {
         text: '撤销后，验真页将显示证书无效，持有人将无法再次下载。已下载的图片会保留。此操作不可恢复。',
         action: async () => { await perform(() => api(`/admin/certificates/${id}/revoke`, {}), '证书已撤销'); }
       })} />}
+      </div>
       <dialog
         ref={dialog}
         className="m3-dialog"

@@ -9,7 +9,8 @@ import {
   Gamepad2,
   Home as HomeIcon,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  UserPlus
 } from 'lucide-react';
 import { Home } from './pages/Home';
 import { Assessment } from './pages/Assessment';
@@ -20,6 +21,7 @@ import { AccountProvider, useAccount } from './AccountProvider';
 import { People } from './pages/People';
 import { Projects } from './pages/Projects';
 import { Events } from './pages/Events';
+import { Join } from './pages/Join';
 import { Consensus } from './pages/Consensus';
 import { PeopleProvider } from './content/PeopleProvider';
 import { projects, projectCategories } from './content';
@@ -34,6 +36,7 @@ import './motion.css';
 import './theme/theme.css';
 import './community.css';
 import './accounts.css';
+import './join.css';
 applyPreferences(readPreferences(), false);
 function App() {
   const { user } = useAccount();
@@ -61,7 +64,7 @@ function App() {
   }, []);
   usePageMotion(main, location.pathname);
   useEffect(() => {
-    document.title = `${location.pathname.startsWith('/account') ? '我的账号' : location.pathname.startsWith('/assessment') ? '素质问卷' : location.pathname.startsWith('/verify') ? '证书验真' : location.pathname.startsWith('/admin') ? '社团管理' : location.pathname.startsWith('/people') ? '成员名录' : location.pathname.startsWith('/projects') ? '项目工坊' : location.pathname.startsWith('/events') ? '赛事展台' : location.pathname.startsWith('/consensus') ? '社区共识' : '让好奇心，不断加一'} · I++ Club`;
+    document.title = `${location.pathname.startsWith('/join') ? '加入我们' : location.pathname.startsWith('/account') ? '我的账号' : location.pathname.startsWith('/assessment') ? '素质问卷' : location.pathname.startsWith('/verify') ? '证书验真' : location.pathname.startsWith('/admin') ? '社团管理' : location.pathname.startsWith('/people') ? '成员名录' : location.pathname.startsWith('/projects') ? '项目工坊' : location.pathname.startsWith('/events') ? '赛事展台' : location.pathname.startsWith('/consensus') ? '社区共识' : '让好奇心，不断加一'} · I++ Club`;
   }, [location.pathname]);
   return (
     <>
@@ -104,8 +107,11 @@ function App() {
               <ShieldCheck size={21} aria-hidden="true" />
               <span>证书验真</span>
             </NavLink>
+            <NavLink to="/join" onMouseEnter={() => closeMenu()} onFocus={() => closeMenu()}>
+              <UserPlus size={21} aria-hidden="true" /><span>加入我们</span>
+            </NavLink>
           </nav>
-          {/* Category links live outside .main-nav so the five primary destinations stay countable. */}
+          {/* Category links live outside .main-nav. */}
           <div className="nav-menu" hidden={!menu} onMouseEnter={openMenu}>
             <div className="nav-menu-col">
               <p className="nav-menu-head">按分类</p>
@@ -164,6 +170,7 @@ function App() {
           <Route path="/verify/:id" element={<Verify />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/join" element={<Join />} />
           <Route path="/account/admin" element={<Navigate to="/account?next=/admin" replace />} />
           <Route
             path="*"
@@ -193,6 +200,7 @@ function App() {
           <Link to="/people">成员名录</Link>
           <Link to="/events">赛事展台</Link>
           <Link to="/consensus">社区共识</Link>
+          <Link to="/join">加入我们</Link>
           <Link to="/admin">社团管理</Link>
         </div>
         <div className="footer-bottom">

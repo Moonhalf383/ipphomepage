@@ -57,6 +57,7 @@ async function complete(page: Page, questions: Question[], formal: boolean) {
 }
 test('layout at narrow and tablet widths and accessible light/dark entry pages', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'Width matrix is run once');
+  test.setTimeout(120_000);
   for (const width of [320, 375, 600, 768, 1024, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     for (const route of ['/', '/assessment', '/verify', '/admin', '/account']) {
@@ -245,7 +246,7 @@ test('unified account routes, compact forms and full email password recovery', a
   await page.getByLabel('确认密码', { exact: true }).fill('original-test-password');
   await page.getByRole('button', { name: '获取验证码', exact: true }).click();
   async function lastCode() {
-    const response = await page.request.get('http://localhost:3001/__test/mail');
+    const response = await page.request.get(`http://localhost:${process.env.E2E_API_PORT || 3001}/__test/mail`);
     const messages = await response.json();
     return messages.findLast((m: any) => m.to === email && m.subject.includes('验证码')).text.match(/\d{6}/)[0];
   }

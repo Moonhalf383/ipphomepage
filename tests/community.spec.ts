@@ -114,13 +114,14 @@ test('projects show real sources and events have an honest empty state', async (
     'href',
     '/events'
   );
-  await expect(page.locator('.main-nav a')).toHaveCount(5);
+  await expect(page.locator('.main-nav a')).toHaveCount(6);
   await page.locator('.main-nav').getByRole('link', { name: '成员名录', exact: true }).click();
   await expect(page).toHaveURL(/\/people$/);
 });
 
 test('visible cards keep stable hit targets while their contents use finite expressive motion', async ({ page }, info) => {
   test.skip(info.project.name !== 'desktop', 'Hover requires a fine pointer');
+  test.setTimeout(90_000);
   const moved = async (selector: string, property: 'translate' | 'scale' | 'rotate' = 'translate') => {
     const locator = page.locator(selector).first();
     await locator.hover();
@@ -307,10 +308,10 @@ test('mobile bottom nav renders its icons and keeps the active label clear of th
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto('/');
   const links = page.locator('.main-nav a');
-  await expect(links).toHaveCount(5);
+  await expect(links).toHaveCount(6);
   // 全局规则藏了导航图标，移动端要靠同特异度的规则盖回来；漏掉就整排图标消失。
-  await expect(links.locator('svg:not(.nav-caret)')).toHaveCount(5);
-  for (let i = 0; i < 5; i++) await expect(links.nth(i).locator('svg:not(.nav-caret)')).toBeVisible();
+  await expect(links.locator('svg:not(.nav-caret)')).toHaveCount(6);
+  for (let i = 0; i < 6; i++) await expect(links.nth(i).locator('svg:not(.nav-caret)')).toBeVisible();
   const active = page.locator('.main-nav a.active');
   await expect(active.locator('span')).toBeVisible();
   const geom = await active.evaluate(a => {

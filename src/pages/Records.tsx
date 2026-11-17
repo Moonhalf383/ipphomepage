@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ClipboardList, ShieldAlert } from 'lucide-react';
 import type { Attempt, Result } from '../../shared/types';
 import { api, Button, date, Loading, message, Notice } from '../ui';
+import { useSwitchMotion } from '../motion';
 export type RecordSummary = { id: string; displayName: string; email?: string; demo: boolean; createdAt: number; result: Result | null };
 export function Records({ attempts, certificates, busy, onRevoke }: {
   attempts: RecordSummary[];
@@ -16,6 +17,7 @@ export function Records({ attempts, certificates, busy, onRevoke }: {
   const heading = useRef<HTMLHeadingElement>(null);
   const answerPane = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  useSwitchMotion(answerPane, `${selected}:${detail?.id ?? 'loading'}:${error}`);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   async function select(id: string) {

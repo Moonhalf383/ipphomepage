@@ -13,6 +13,7 @@ import { certificatePng } from './certificate.ts';
 import { normalizeOrigin, trustedOrigins } from './origin.ts';
 import type { Answers, Question, Result, Settings } from '../shared/types.ts';
 import { installAccounts } from './accounts.ts';
+import { installRecruitment } from './recruitment.ts';
 import { smtpMailer, type Mailer } from './mail.ts';
 
 type Row = Record<string, any>;
@@ -130,6 +131,7 @@ export function createApp(
     mailer: options.mailer ?? smtpMailer(), bulkMailer: options.bulkMailer ?? smtpMailer('BULK_'),
     initialPresidentEmail: options.initialPresidentEmail ?? process.env.INITIAL_PRESIDENT_EMAIL
   });
+  installRecruitment(app, db, accounts, limiter(30, HOUR));
   const admin: express.RequestHandler = (req, res, next) => {
     if (!allowLegacyAdmin || accounts.current(req)) return accounts.requireAdmin(req, res, next);
     const token = req.cookies.ipp_admin;

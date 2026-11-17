@@ -3,6 +3,7 @@ import { Mail, RefreshCw } from 'lucide-react';
 import type { Account, Role, UserSummary } from '../../shared/accounts';
 import { roleLabels } from '../../shared/accounts';
 import { api, Button, date, message, Notice } from '../ui';
+import { useSwitchMotion } from '../motion';
 type Job = { id: string; subject: string; total: number; sent: number; failed: number; pending: number };
 export function Users({ actor }: { actor: Account }) {
   const [users, setUsers] = useState<UserSummary[]>([]);
@@ -21,6 +22,8 @@ export function Users({ actor }: { actor: Account }) {
   const [notice, setNotice] = useState('');
   const [revision, setRevision] = useState(0);
   const [change, setChange] = useState<{ user: UserSummary; role: Role } | null>(null);
+  const results = useRef<HTMLDivElement>(null);
+  useSwitchMotion(results, users.map(user => `${user.id}:${user.role}`).join(','));
   const confirm = useRef<HTMLDialogElement>(null);
   const roleDialog = useRef<HTMLDialogElement>(null);
   const form = useRef<HTMLFormElement>(null);
@@ -56,7 +59,7 @@ export function Users({ actor }: { actor: Account }) {
     <section className="surface-card records-panel"><div className="card-top"><h2>用户与身份</h2><Button variant="text" onClick={() => setRevision(n => n + 1)}><RefreshCw size={16} />刷新</Button></div>
       <div className="form-grid"><label className="field">查找用户<input type="search" placeholder="邮箱或昵称" maxLength={100} value={query} onChange={e => { setQuery(e.target.value); setPage(1); }} /></label>
       <label className="field">身份<select value={role} onChange={e => { setRole(e.target.value); setPage(1); }}><option value="all">全部身份</option>{Object.entries(roleLabels).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></label></div>
-      <div className="table-scroll"><table><thead><tr><th>选择</th><th>用户</th><th>身份</th><th>问卷</th></tr></thead><tbody>{users.map(u => {
+      <div className="table-scroll" ref={results}><table><thead><tr><th>选择</th><th>用户</th><th>身份</th><th>问卷</th></tr></thead><tbody>{users.map(u => {
         const canEdit = u.editableRoles.length > 0;
         return <tr key={u.id}><td><input type="checkbox" aria-label={`选择 ${u.email}`} checked={selected.includes(u.id)} onChange={e => setSelected(ids => e.target.checked ? [...ids,u.id] : ids.filter(id => id !== u.id))} /></td>
           <td><strong>{u.displayName}</strong><small>{u.email}</small><small>{date(u.createdAt)}</small></td>

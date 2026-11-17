@@ -4,6 +4,7 @@ import { ArrowRight, Mail } from 'lucide-react';
 import { roleLabels } from '../../shared/accounts';
 import type { Result } from '../../shared/types';
 import { useAccount } from '../AccountProvider';
+import { useSwitchMotion } from '../motion';
 import { api, Button, date, Loading, message, Notice } from '../ui';
 type Mode = 'login' | 'register' | 'reset';
 export function Account() {
@@ -24,6 +25,8 @@ export function Account() {
   const [records, setRecords] = useState<{ id: string; displayName: string; createdAt: number; result: Result | null }[]>([]);
   const form = useRef<HTMLFormElement>(null);
   const pending = useRef(false);
+  const surface = useRef<HTMLDivElement>(null);
+  useSwitchMotion(surface, `${ready}:${mode}:${user?.id ?? 'guest'}`);
   const cooldownKey = `${mode}:${email.trim().toLowerCase()}`;
   const cooldown = Math.max(0, Math.ceil(((cooldowns[cooldownKey] ?? 0) - clock) / 1000));
   useEffect(() => {
@@ -55,7 +58,7 @@ export function Account() {
       await api(mode === 'register' ? '/auth/register' : '/auth/login', mode === 'register' ? { email, password, displayName, code } : { email, password });
       setPassword(''); setConfirmation(''); await refresh();
       const target = params.get('next');
-      navigate(target === '/admin' ? '/admin' : target === '/assessment' ? '/assessment' : '/account', { replace: true });
+      navigate(target === '/admin' ? '/admin' : target === '/assessment' ? '/assessment' : target === '/join' ? '/join' : '/account', { replace: true });
     } catch (e) { setError(message(e)); } finally { pending.current = false; setBusy(false); }
   }
   function switchAfterReset() {
@@ -78,7 +81,7 @@ export function Account() {
   const reset = mode === 'reset';
   const register = mode === 'register';
   const title = user && !reset ? '我的账号' : reset ? '重设密码' : register ? '邮箱注册' : '邮箱登录';
-  return <div className={`page account-page ${user && !reset ? 'account-overview' : 'account-auth'}`}>
+  return <div ref={surface} className={`page account-page ${user && !reset ? 'account-overview' : 'account-auth'}`}>
     <header className="account-heading"><h1>{title}</h1></header>
     {error && <Notice tone="error">{error}</Notice>}
     {notice && <Notice tone="success">{notice}</Notice>}
@@ -88,6 +91,7 @@ export function Account() {
         <div className="account-identity"><h2>{user.displayName}</h2><span className="chip">{roleLabels[user.role]}</span></div><p>{user.email}</p>
         <div className="account-actions">
           <Link className="account-action" to="/assessment">前往问卷 <ArrowRight size={16} /></Link>
+          <Link className="account-action" to="/join">加入我们 <ArrowRight size={16} /></Link>
           {user.role === 'admin' && <Link className="account-action" to="/admin">社团管理 <ArrowRight size={16} /></Link>}
           <button className="account-action" disabled={busy} onClick={() => {
             if (pending.current) return; pending.current = true; setBusy(true);

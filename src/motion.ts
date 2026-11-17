@@ -33,6 +33,22 @@ export function usePageMotion(main: RefObject<HTMLElement | null>, pathname: str
   }, [pathname, main]);
 }
 
+/** State-only transitions do not scroll, remount forms, or move focus. */
+export function useSwitchMotion(surface: RefObject<HTMLElement | null>, state: string) {
+  useLayoutEffect(() => {
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const node = surface.current;
+    if (!node?.animate || media.matches) return;
+    const animation = node.animate([
+      { opacity: .25, translate: '0 -8px' },
+      { opacity: 1, translate: '0 0' }
+    ], { duration: 320, easing: 'cubic-bezier(.05,.7,.1,1)' });
+    const cancel = () => animation.cancel();
+    media.addEventListener('change', cancel);
+    return () => { cancel(); media.removeEventListener('change', cancel); };
+  }, [surface, state]);
+}
+
 /** At most one style update per frame; no React rerenders and no touch/keyboard parallax. */
 export function useArtParallax() {
   const ref = useRef<HTMLDivElement>(null);
