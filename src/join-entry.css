@@ -1,0 +1,104 @@
+/* Temporary recruitment action; the long-term branch keeps the standard hero. */
+.hero-primary-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hero-actions .hero-primary-actions .join-entry {
+  --join-entry-bg: #b93b25;
+  --join-entry-ink: #fff;
+  min-height: 54px;
+  padding: 14px 22px;
+  font-size: 18px;
+  font-weight: 700;
+  background: var(--join-entry-bg);
+  color: var(--join-entry-ink);
+  white-space: nowrap;
+  box-shadow: 0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c);
+}
+.hero-actions .hero-primary-actions .hero-explore {
+  white-space: nowrap;
+}
+:root[data-theme='dark'] .hero-actions .hero-primary-actions .join-entry {
+  --join-entry-bg: #ffb59c;
+  --join-entry-ink: #4c1709;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-actions .hero-primary-actions .join-entry:focus-visible {
+    box-shadow:
+      0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c),
+      0 0 0 5px color-mix(in srgb, var(--join-entry-bg) 20%, transparent);
+  }
+  .hero-actions .hero-primary-actions .join-entry:active {
+    scale: 0.96;
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c);
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .hero-actions .hero-primary-actions .join-entry:hover {
+    background: color-mix(in srgb, var(--join-entry-bg) 90%, var(--join-entry-ink));
+    box-shadow:
+      0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, #30130c),
+      0 7px 16px color-mix(in srgb, var(--join-entry-bg) 22%, transparent);
+  }
+  .hero-actions .hero-primary-actions .join-entry:hover > svg {
+    translate: 5px 0;
+  }
+}
+@media (min-width: 601px) and (max-width: 840px) {
+  .hero-primary-actions {
+    gap: 8px;
+  }
+  .hero-actions .hero-primary-actions .join-entry {
+    padding: 12px;
+    font-size: 17px;
+    gap: 6px;
+  }
+  .hero-actions .hero-primary-actions .hero-explore {
+    padding: 12px;
+    font-size: 12px;
+    gap: 6px;
+  }
+}
+@media (max-width: 600px) {
+  .hero-primary-actions {
+    gap: 10px;
+  }
+  .hero-actions .hero-primary-actions .join-entry {
+    min-height: 52px;
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .hero-actions .hero-primary-actions .join-entry > svg {
+    width: 18px;
+    height: 18px;
+  }
+  .hero-actions .hero-primary-actions .hero-explore {
+    padding: 12px;
+    gap: 6px;
+  }
+  .hero-actions .hero-primary-actions .hero-explore > svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+/* The two-action row must not force the tablet illustration beyond the viewport. */
+@media (min-width: 601px) and (max-width: 740px) {
+  .home .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .home .hero-art {
+    width: 340px;
+    max-width: none;
+    margin-left: -55px;
+    transform: scale(0.68);
+  }
+  .home .orbit-one {
+    width: 300px;
+    height: 300px;
+  }
+  .home .orbit-two {
+    width: 220px;
+    height: 350px;
+  }
+}
