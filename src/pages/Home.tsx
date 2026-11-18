@@ -141,10 +141,10 @@ export function Home() {
               );
             })}
           </h1>
-          <p className="hero-description">我们做游戏引擎、编程语言和开源工具，也写博客。</p>
+          <p className="hero-description">做游戏、写工具、记录想法，把好奇心变成可以分享的作品。</p>
           <div className="hero-actions">
             <Link className="link-button join-entry" to="/join">
-              加入我们 <ArrowRight size={26} aria-hidden="true" />
+              加入我们🎉 <ArrowRight size={26} aria-hidden="true" />
             </Link>
             <div className="hero-secondary-actions">
               <a className="link-button hero-explore" href="#explore">
