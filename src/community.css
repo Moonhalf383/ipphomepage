@@ -1132,10 +1132,9 @@
   gap: 7px;
 }
 .event-cover {
-  width: 200px;
+  width: 220px;
+  height: auto;
   border-radius: 14px;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .person-book-hitbox:hover > .person-book,
@@ -1316,7 +1315,7 @@
     margin-left: 76px;
   }
   .event-cover {
-    width: 145px;
+    width: 170px;
   }
 }
 @media (max-width: 760px) {
@@ -1410,8 +1409,7 @@
     gap: 20px;
   }
   .event-cover {
-    width: 100%;
-    max-height: 220px;
+    width: min(100%, 280px);
   }
   .event-date {
     min-width: 60px;

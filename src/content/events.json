@@ -1,3 +1,20 @@
 {
-  "events": []
+  "events": [
+    {
+      "id": "osgame-2026",
+      "name": "2026开源游戏开发大赛",
+      "summary": "面向全球游戏创作者，16 天线上集中开发，赛后统一评审；正式赛题于 11 月 21 日开赛时公布。",
+      "status": "upcoming",
+      "role": "support",
+      "startDate": "2026-11-21",
+      "endDate": "2026-12-06",
+      "location": "线上",
+      "cover": "/images/events/osgame-2026.webp",
+      "coverAlt": "2026开源游戏开发大赛海报：22.8 万元现金奖金，报名 2026.11.14–11.27，开发 2026.11.21–12.06，扫码报名",
+      "links": [
+        { "label": "赛事介绍 & 报名", "url": "https://2026gamejam.osgame.org/" },
+        { "label": "宣传视频", "url": "https://www.bilibili.com/video/av117631185062627/" }
+      ]
+    }
+  ]
 }
