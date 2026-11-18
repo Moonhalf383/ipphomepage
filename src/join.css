@@ -281,3 +281,5 @@
     margin-top: 16px;
   }
 }
+.interview-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.interview-actions md-text-button { flex-shrink: 0; }

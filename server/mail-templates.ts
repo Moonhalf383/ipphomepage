@@ -4,7 +4,9 @@ export type AccountMail =
   | { kind: 'registration-code' | 'password-code'; to: string; code: string }
   | { kind: 'welcome'; to: string; name: string; role: Role }
   | { kind: 'password-changed'; to: string; name: string; at: number }
-  | { kind: 'role-changed'; to: string; name: string; previous: Role; role: Role; at: number };
+  | { kind: 'role-changed'; to: string; name: string; previous: Role; role: Role; at: number }
+  | { kind: 'interview-cancelled'; to: string; name: string; title: string; location: string; at: number }
+  | { kind: 'interview-updated'; to: string; name: string; title: string; location: string; at: number };
 type Copy = { subject: string; title: string; paragraphs: string[]; code?: string; details?: [string, string][]; action?: { label: string; path: string }; note?: string; warning?: string };
 const escape = (value: string) => value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
 const time = (at: number) => `${new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(at)}（北京时间 UTC+08:00）`;
@@ -39,6 +41,20 @@ function copyFor(event: AccountMail): Copy {
       details: [['账号邮箱', event.to], ['修改时间', time(event.at)]],
       note: '原有登录已退出，下次请使用新密码登录喵。', action: { label: '前往登录', path: '/account' },
       warning: '如果这次修改不是你操作的，请立即通过官网重设密码。'
+    };
+    case 'interview-cancelled': return {
+      subject: '【I++ Club】面试安排已取消', title: '面试安排有变动。',
+      paragraphs: [`${event.name}，你填报的面试安排已被取消，本次填报不再生效，无需到场。`],
+      details: [['面试安排', event.title], ['原定地点', event.location], ['取消时间', time(event.at)]],
+      note: '新的安排发布后可以重新填报，留意加入页面喵。', action: { label: '查看面试安排', path: '/join' },
+      warning: '对这次取消有疑问，可以联系社团管理员。'
+    };
+    case 'interview-updated': return {
+      subject: '【I++ Club】面试安排信息已更新', title: '面试安排更新啦。',
+      paragraphs: [`${event.name}，你填报的面试安排信息有更新，你已选的时间保持不变。`],
+      details: [['面试安排', event.title], ['地点', event.location], ['更新时间', time(event.at)]],
+      note: '请以最新信息为准，按时到场喵。', action: { label: '查看面试安排', path: '/join' },
+      warning: '对更新内容有疑问，可以联系社团管理员。'
     };
     case 'role-changed': return {
       subject: '【I++ Club】你的账号身份已更新', title: '你的社区名牌更新啦。',

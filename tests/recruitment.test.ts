@@ -40,7 +40,7 @@ function setup(t: TestContext, dbPath = ':memory:') {
     server.db.prepare('UPDATE users SET role=? WHERE id=?').run(role, body.user.id);
     return { client, user: body.user };
   }
-  return { ...server, register, close };
+  return { ...server, register, close, sent };
 }
 const input = () => ({
   title: '秋季招新面试',
@@ -175,4 +175,87 @@ test('migration is additive and interview records survive app restart', async t 
     .send({ email: 'student@example.com', password })
     .expect(200);
   assert.equal((await agent.get('/api/join/schedules')).body[0].application.name, '小林');
+});
+
+test('president edits schedules with booked slots locked; other roles cannot manage', async t => {
+  const { app, register, db, accounts, sent } = setup(t);
+  const president = await register('edit-p@example.com', 'president');
+  const admin = await register('edit-a@example.com', 'admin');
+  const student = await register('edit-s@example.com');
+  const { body: schedule } = await president.client
+    .post('/api/admin/interviews').set('Origin', origin).send(input()).expect(201);
+  await student.client.post('/api/join/applications').set('Origin', origin).send(apply(schedule)).expect(201);
+  const url = `/api/admin/interviews/${schedule.id}`;
+  const editBody = () => ({
+    title: '改期面试', location: '新楼 101', description: '',
+    slots: [
+      { id: schedule.slots[0].id, startAt: schedule.slots[0].startAt, endAt: schedule.slots[0].endAt },
+      { startAt: Date.now() + 3 * 86400000, endAt: Date.now() + 3 * 86400000 + 3600000 }
+    ]
+  });
+  await admin.client.put(url).set('Origin', origin).send(editBody()).expect(403);
+  await admin.client.post(`${url}/cancel`).set('Origin', origin).send({}).expect(403);
+  await admin.client.delete(url).set('Origin', origin).expect(403);
+  await student.client.put(url).set('Origin', origin).send(editBody()).expect(403);
+  const { body: edited } = await president.client.put(url).set('Origin', origin).send(editBody()).expect(200);
+  assert.equal(edited.title, '改期面试');
+  assert.equal(edited.slots[0].id, schedule.slots[0].id);
+  assert.notEqual(edited.slots[1].id, schedule.slots[1].id);
+  assert.ok(db.prepare("SELECT id FROM audit_log WHERE action='edit-interview'").get());
+  await accounts.flushNotifications();
+  const update = sent.findLast(mail => mail.to === 'edit-s@example.com' && mail.text.includes('信息有更新'));
+  assert.ok(update, 'applicant receives update notice');
+  assert.match(update!.text, /新楼 101/);
+  // Booked slot cannot move or disappear.
+  const moved = editBody();
+  moved.slots[0] = { ...moved.slots[0], startAt: moved.slots[0].startAt + 60_000, endAt: moved.slots[0].endAt + 60_000 };
+  await president.client.put(url).set('Origin', origin).send(moved).expect(409);
+  await president.client.put(url).set('Origin', origin).send({ ...editBody(), slots: [editBody().slots[1]] }).expect(409);
+  await president.client.put(url).set('Origin', origin)
+    .send({ ...editBody(), slots: [{ id: randomUUID(), startAt: Date.now() + 86400000, endAt: Date.now() + 90000000 }] }).expect(400);
+  // Application keeps its slot; applicant receives an update notice.
+  const publicList = (await student.client.get('/api/join/schedules').expect(200)).body;
+  const mine = publicList.find((s: InterviewSchedule) => s.id === schedule.id);
+  assert.equal(mine.title, '改期面试');
+  assert.equal(mine.application.slotId, schedule.slots[0].id);
+  assert.equal(mine.cancelledAt, null);
+  // Legacy rows without cancelledAt normalize to null.
+  const legacy = { ...edited } as Partial<InterviewSchedule>;
+  delete legacy.cancelledAt;
+  db.prepare('UPDATE interview_schedules SET data=? WHERE id=?').run(JSON.stringify(legacy), schedule.id);
+  const normalized = (await student.client.get('/api/join/schedules').expect(200)).body;
+  assert.equal(normalized.find((s: InterviewSchedule) => s.id === schedule.id).cancelledAt, null);
+});
+
+test('cancel notifies applicants and blocks applications and edits; delete requires no applications', async t => {
+  const { app, register, db, accounts, sent } = setup(t);
+  const president = await register('cancel-p@example.com', 'president');
+  const student = await register('cancel-s@example.com');
+  const { body: first } = await president.client.post('/api/admin/interviews').set('Origin', origin).send(input()).expect(201);
+  const { body: second } = await president.client
+    .post('/api/admin/interviews').set('Origin', origin).send({ ...input(), title: '无人填报' }).expect(201);
+  await student.client.post('/api/join/applications').set('Origin', origin).send(apply(first)).expect(201);
+  const { body: cancelled } = await president.client
+    .post(`/api/admin/interviews/${first.id}/cancel`).set('Origin', origin).send({}).expect(200);
+  assert.ok(cancelled.cancelledAt > 0);
+  await accounts.flushNotifications();
+  const notice = sent.findLast(mail => mail.to === 'cancel-s@example.com' && mail.text.includes('已被取消'));
+  assert.ok(notice, 'applicant receives cancellation notice');
+  assert.match(notice!.text, /秋季招新面试/);
+  assert.ok(db.prepare("SELECT id FROM audit_log WHERE action='cancel-interview'").get());
+  await student.client.post('/api/join/applications').set('Origin', origin)
+    .send({ ...apply(first), slotId: first.slots[1].id }).expect(409);
+  await president.client.put(`/api/admin/interviews/${first.id}`).set('Origin', origin)
+    .send({ title: 'x', location: 'y', description: '', slots: first.slots }).expect(409);
+  await president.client.post(`/api/admin/interviews/${first.id}/cancel`).set('Origin', origin).send({}).expect(409);
+  await president.client.delete(`/api/admin/interviews/${first.id}`).set('Origin', origin).expect(409);
+  assert.equal(db.prepare('SELECT count(*) n FROM interview_applications WHERE scheduleId=?').get(first.id)!.n, 1);
+  await president.client.delete(`/api/admin/interviews/${second.id}`).set('Origin', origin).expect(200);
+  assert.ok(db.prepare("SELECT id FROM audit_log WHERE action='delete-interview'").get());
+  const list = (await student.client.get('/api/join/schedules').expect(200)).body;
+  assert.ok(!list.some((s: InterviewSchedule) => s.id === second.id));
+  const kept = list.find((s: InterviewSchedule) => s.id === first.id);
+  assert.ok(kept.cancelledAt > 0);
+  assert.ok(kept.application);
+  await president.client.delete(`/api/admin/interviews/${randomUUID()}`).set('Origin', origin).expect(404);
 });

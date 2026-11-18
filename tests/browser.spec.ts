@@ -325,9 +325,12 @@ test('answer records use independently scrolling list and detail panes with mobi
   await expect(detail.getByRole('heading', { name: '分栏测试甲 的答案' })).toBeVisible();
   await expect(detail.locator('.record-answers li')).toHaveCount(14);
   if (info.project.name === 'desktop') {
-    const a = await list.boundingBox(), b = await detail.boundingBox();
-    expect(b!.x).toBeGreaterThan(a!.x + a!.width - 1);
-    expect(Math.abs(a!.y-b!.y)).toBeLessThan(2);
+    // Entrance animation may still be settling; poll until both panes align.
+    await expect.poll(async () => {
+      const a = await list.boundingBox(), b = await detail.boundingBox();
+      expect(b!.x).toBeGreaterThan(a!.x + a!.width - 1);
+      return Math.abs(a!.y - b!.y);
+    }).toBeLessThan(2);
     const before = await page.evaluate(() => scrollY);
     await detail.evaluate(el => { el.scrollTop = 600; });
     expect(await detail.evaluate(el => el.scrollTop)).toBeGreaterThan(0);

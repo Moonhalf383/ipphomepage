@@ -10,6 +10,7 @@ export interface InterviewSchedule {
   description: string;
   slots: InterviewSlot[];
   createdAt: number;
+  cancelledAt: number | null;
 }
 export interface InterviewApplication {
   id: string;

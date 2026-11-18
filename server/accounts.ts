@@ -338,5 +338,5 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
   }
   const timer = options.bulkMailer ? setInterval(() => { void flushMail().catch(() => console.error('Mail queue processing failed')); }, 3000) : undefined;
   timer?.unref();
-  return { current, publicUser, requireAdmin, requireUser, flushMail, flushNotifications: notifications.flush, close: async () => { stopped = true; clearInterval(timer); await notifications.close(); } };
+  return { current, publicUser, requireAdmin, requireUser, notify: notifications.enqueue, flushMail, flushNotifications: notifications.flush, close: async () => { stopped = true; clearInterval(timer); await notifications.close(); } };
 }

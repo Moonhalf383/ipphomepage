@@ -10,7 +10,9 @@ const events: AccountMail[] = [
   { kind: 'password-code', to: 'person@example.com', code: '654321' },
   { kind: 'welcome', to: 'person@example.com', name: '新朋友', role: 'non_member' },
   { kind: 'password-changed', to: 'person@example.com', name: '新朋友', at: Date.UTC(2026, 10, 16) },
-  { kind: 'role-changed', to: 'person@example.com', name: '新朋友', previous: 'non_member', role: 'member', at: Date.UTC(2026, 10, 16) }
+  { kind: 'role-changed', to: 'person@example.com', name: '新朋友', previous: 'non_member', role: 'member', at: Date.UTC(2026, 10, 16) },
+  { kind: 'interview-cancelled', to: 'person@example.com', name: '新朋友', title: '秋季招新面试', location: '教学楼 302', at: Date.UTC(2026, 10, 16) },
+  { kind: 'interview-updated', to: 'person@example.com', name: '新朋友', title: '秋季招新面试', location: '新楼 101', at: Date.UTC(2026, 10, 16) }
 ];
 test('all account emails carry equivalent branded HTML and plain-text content', () => {
   for (const event of events) {

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Mailer } from './mail.ts';
 import { accountMail, type AccountMail } from './mail-templates.ts';
-type Notification = Extract<AccountMail, { kind: 'welcome' | 'password-changed' | 'role-changed' }>;
+type Notification = Extract<AccountMail, { kind: 'welcome' | 'password-changed' | 'role-changed' | 'interview-cancelled' | 'interview-updated' }>;
 const DAY = 86_400_000;
 export function accountNotifications(db: DatabaseSync, mailer: Mailer | undefined, origin: string) {
   db.exec(`CREATE TABLE IF NOT EXISTS account_notifications (

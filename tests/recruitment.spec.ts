@@ -175,3 +175,95 @@ test('join page fits narrow viewports and meets light/dark accessibility checks'
     expect(result.violations.filter(v => v.impact === 'serious' || v.impact === 'critical')).toEqual([]);
   }
 });
+
+test('president edits, cancels and deletes schedules; applicant sees cancellation', async ({ page, browser }, info) => {
+  test.setTimeout(60000);
+  const title = `管理面试 ${info.project.name}`;
+  await page.request.post('/api/auth/login', { headers: { Origin: origin }, data: { email: 'admin@example.com', password } });
+  const day = new Date(Date.now() + 86400000 * 6).toISOString().slice(0, 10);
+  const create = async (name: string) => {
+    await page.goto('/admin?tab=interviews');
+    await page.getByRole('button', { name: '发布安排', exact: true }).click();
+    await page.getByLabel('标题', { exact: true }).fill(name);
+    await page.getByLabel('地点', { exact: true }).fill('教学楼 302');
+    await page.getByLabel('开始时间 1').fill(`${day}T14:00`);
+    await page.getByLabel('结束时间 1').fill(`${day}T15:00`);
+    await page.locator('.editor-actions').getByRole('button', { name: '发布安排', exact: true }).click();
+    await expect(page.getByText('面试安排已发布', { exact: true })).toBeVisible();
+  };
+  await create(title);
+  await create(`${title} 待删除`);
+  const card = () => page.locator('.interview-list article').filter({ hasText: title }).filter({ hasNotText: '待删除' });
+  // Edit: rename and relocate.
+  await card().getByRole('button', { name: '编辑', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '编辑面试安排', exact: true })).toBeVisible();
+  await page.getByLabel('地点', { exact: true }).fill('新楼 101');
+  await page.getByRole('button', { name: '保存修改', exact: true }).click();
+  await expect(page.getByText('面试安排已更新', { exact: true })).toBeVisible();
+  await expect(card().getByText('新楼 101', { exact: true })).toBeVisible();
+  // Applicant applies through the API, then the booked slot becomes locked in the editor.
+  const schedules = await (await page.request.get('/api/join/schedules')).json();
+  const target = schedules.find((s: { title: string }) => s.title === title);
+  const visitor = await browser.newContext(info.project.use);
+  const candidate = await visitor.newPage();
+  await candidate.request.post(`${origin}/api/auth/login`, { headers: { Origin: origin }, data: { email: 'admin@example.com', password } });
+  expect((await candidate.request.post(`${origin}/api/join/applications`, {
+    headers: { Origin: origin },
+    data: { scheduleId: target.id, slotId: target.slots[0].id, name: '管理测试', contact: 'QQ 1', note: '' }
+  })).ok()).toBe(true);
+  await page.reload();
+  await card().getByRole('button', { name: '编辑', exact: true }).click();
+  await expect(page.getByLabel(/开始时间 1（已有填报，不可修改）/)).toBeDisabled();
+  await expect(page.getByRole('button', { name: '移除时间 1' })).toHaveCount(0);
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  // Delete is disabled with applications; the empty schedule can be deleted after confirmation.
+  await expect(card().getByRole('button', { name: '删除', exact: true })).toBeDisabled();
+  const empty = page.locator('.interview-list article').filter({ hasText: `${title} 待删除` });
+  await empty.getByRole('button', { name: '删除', exact: true }).click();
+  await page.getByRole('button', { name: '确认删除', exact: true }).click();
+  await expect(page.getByText('安排已删除', { exact: true })).toBeVisible();
+  await expect(empty).toHaveCount(0);
+  // Cancel after confirmation; applicant view updates.
+  await card().getByRole('button', { name: '取消安排', exact: true }).click();
+  await page.getByRole('button', { name: '确认取消', exact: true }).click();
+  await expect(page.getByText('安排已取消，填报者将收到邮件通知', { exact: true })).toBeVisible();
+  await expect(card().getByText('已取消', { exact: true })).toBeVisible();
+  await expect(card().getByRole('button', { name: '编辑', exact: true })).toBeDisabled();
+  await expect(card().getByRole('button', { name: '取消安排', exact: true })).toHaveCount(0);
+  await candidate.goto(`${origin}/join`);
+  const publicCard = candidate.locator('.join-schedule').filter({ hasText: title }).filter({ hasNotText: '待删除' });
+  await expect(publicCard.getByText('已取消', { exact: true })).toBeVisible();
+  await expect(publicCard.getByText('该安排已取消，本次填报不再生效，请留意邮件通知。', { exact: true })).toBeVisible();
+  await expect(publicCard.getByRole('button', { name: '选择安排' })).toHaveCount(0);
+  await expect.poll(async () => {
+    const mails = await (await candidate.request.get(`http://localhost:${process.env.E2E_API_PORT || 3001}/__test/mail`)).json();
+    return mails.some((m: { text: string }) => m.text.includes('已被取消') && m.text.includes(title));
+  }, { timeout: 15000 }).toBe(true);
+  await page.screenshot({ path: info.outputPath('interview-manage.png'), fullPage: true });
+  await visitor.close();
+});
+
+test('editing a schedule keeps second-precision booked slots intact', async ({ page }, info) => {
+  const title = `秒级时间 ${info.project.name}`;
+  await page.request.post('/api/auth/login', { headers: { Origin: origin }, data: { email: 'admin@example.com', password } });
+  const startAt = Date.now() + 86400000 * 7 + 37_000;
+  const created = await (await page.request.post('/api/admin/interviews', {
+    headers: { Origin: origin },
+    data: { title, location: '老地点', description: '', slots: [{ startAt, endAt: startAt + 3600_000 + 12_000 }] }
+  })).json();
+  expect((await page.request.post('/api/join/applications', {
+    headers: { Origin: origin },
+    data: { scheduleId: created.id, slotId: created.slots[0].id, name: '秒级测试', contact: 'QQ 2', note: '' }
+  })).ok()).toBe(true);
+  await page.goto('/admin?tab=interviews');
+  const card = page.locator('.interview-list article').filter({ hasText: title });
+  await card.getByRole('button', { name: '编辑', exact: true }).click();
+  await page.getByLabel('地点', { exact: true }).fill('新地点 202');
+  await page.getByRole('button', { name: '保存修改', exact: true }).click();
+  await expect(page.getByText('面试安排已更新', { exact: true })).toBeVisible();
+  const schedules = await (await page.request.get('/api/join/schedules')).json();
+  const updated = schedules.find((s: { id: string }) => s.id === created.id);
+  expect(updated.location).toBe('新地点 202');
+  expect(updated.slots[0].startAt).toBe(startAt);
+  expect(updated.slots[0].endAt).toBe(startAt + 3600_000 + 12_000);
+});

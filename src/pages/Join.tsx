@@ -69,6 +69,7 @@ export function Join() {
   }
   const current = schedules?.find(item => item.id === selected);
   function select(schedule: PublicInterviewSchedule) {
+    if (schedule.cancelledAt) return;
     setSlotId(schedule.slots.find(slot => slot.endAt > Date.now())?.id ?? '');
     setName(user?.displayName ?? '');
     setContact(user?.email ?? '');
@@ -121,11 +122,14 @@ export function Join() {
             <div className="join-schedules">
               {schedules.map(schedule => {
                 const expired = schedule.slots.every(slot => slot.endAt <= now);
+                const cancelled = schedule.cancelledAt != null;
                 const chosen = schedule.slots.find(slot => slot.id === schedule.application?.slotId);
                 return (
-                  <article className={`surface-card join-schedule ${expired ? 'expired' : ''}`} key={schedule.id}>
+                  <article className={`surface-card join-schedule ${expired || cancelled ? 'expired' : ''}`} key={schedule.id}>
                     <div className="join-schedule-top">
-                      <span className={`chip ${expired ? 'expired-chip' : ''}`}>{expired ? '已过期' : '报名中'}</span>
+                      <span className={`chip ${expired || cancelled ? 'expired-chip' : ''}`}>
+                        {cancelled ? '已取消' : expired ? '已过期' : '报名中'}
+                      </span>
                       {schedule.application && (
                         <span className="chip">
                           <Check size={14} />
@@ -154,9 +158,10 @@ export function Join() {
                       <div className="join-confirmation">
                         <strong>已选时间</strong>
                         <span>{chosen ? slotLabel(chosen) : '—'}</span>
+                        {cancelled && <span className="subtle">该安排已取消，本次填报不再生效，请留意邮件通知。</span>}
                       </div>
                     ) : (
-                      !expired && (
+                      !expired && !cancelled && (
                         <div className="join-schedule-actions">
                           {user ? (
                             <Button onClick={() => select(schedule)}>
