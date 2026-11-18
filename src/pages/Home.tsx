@@ -143,17 +143,17 @@ export function Home() {
           </h1>
           <p className="hero-description">我们做游戏引擎、编程语言和开源工具，也写博客。</p>
           <div className="hero-actions">
-            <div className="hero-primary-actions">
-              <Link className="link-button join-entry" to="/join">
-                加入我们 <ArrowRight size={20} aria-hidden="true" />
-              </Link>
+            <Link className="link-button join-entry" to="/join">
+              加入我们 <ArrowRight size={26} aria-hidden="true" />
+            </Link>
+            <div className="hero-secondary-actions">
               <a className="link-button hero-explore" href="#explore">
                 探索我们的空间 <ArrowRight size={19} aria-hidden="true" />
               </a>
+              <Link className="text-link" to="/assessment">
+                从一份问卷开始 <ArrowUpRight size={18} />
+              </Link>
             </div>
-            <Link className="text-link" to="/assessment">
-              从一份问卷开始 <ArrowUpRight size={18} />
-            </Link>
           </div>
         </div>
         <PlusArt />

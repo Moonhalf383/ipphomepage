@@ -1,94 +1,106 @@
-/* Temporary recruitment action; the long-term branch keeps the standard hero. */
-.hero-primary-actions {
+/* Temporary recruitment action: enlarged join entry on its own row. */
+.home .hero-actions {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+.hero-secondary-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 26px;
 }
-.hero-actions .hero-primary-actions .join-entry {
+.hero-actions a.join-entry {
   --join-entry-bg: var(--md-sys-color-primary);
   --join-entry-ink: var(--md-sys-color-on-primary);
-  min-height: 54px;
-  padding: 14px 22px;
-  font-size: 18px;
+  min-height: 68px;
+  padding: 16px 32px;
+  font-size: 32px;
   font-weight: 700;
+  gap: 14px;
   background: var(--join-entry-bg);
   color: var(--join-entry-ink);
   white-space: nowrap;
   box-shadow: 0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow));
 }
-.hero-actions .hero-primary-actions .hero-explore {
+.hero-actions .hero-secondary-actions .hero-explore {
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
   white-space: nowrap;
 }
-:root[data-theme='dark'] .hero-actions .hero-primary-actions .join-entry {
+:root[data-theme='dark'] .hero-actions a.join-entry {
   --join-entry-bg: var(--md-sys-color-primary-container);
   --join-entry-ink: var(--md-sys-color-on-primary-container);
 }
-:root[data-theme='dark'] .hero-actions .hero-primary-actions .hero-explore {
+:root[data-theme='dark'] .hero-actions .hero-secondary-actions .hero-explore {
   background: var(--md-sys-color-surface-container-high);
   color: var(--md-sys-color-primary);
 }
 @media (prefers-reduced-motion: no-preference) {
-  .hero-actions .hero-primary-actions .join-entry:focus-visible {
+  .hero-actions a.join-entry:focus-visible {
     box-shadow:
       0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow)),
       0 0 0 5px color-mix(in srgb, var(--join-entry-bg) 20%, transparent);
   }
-  .hero-actions .hero-primary-actions .join-entry:active {
+  .hero-actions a.join-entry:active {
     scale: 0.96;
     box-shadow: 0 1px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow));
   }
 }
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .hero-actions .hero-primary-actions .join-entry:hover {
+  .hero-actions a.join-entry:hover {
     background: color-mix(in srgb, var(--join-entry-bg) 90%, var(--join-entry-ink));
     box-shadow:
       0 3px 0 color-mix(in srgb, var(--join-entry-bg) 65%, var(--md-sys-color-shadow)),
       0 7px 16px color-mix(in srgb, var(--join-entry-bg) 22%, transparent);
   }
-  .hero-actions .hero-primary-actions .join-entry:hover > svg {
+  .hero-actions a.join-entry:hover > svg {
     translate: 5px 0;
   }
 }
 @media (min-width: 601px) and (max-width: 840px) {
-  .hero-primary-actions {
-    gap: 8px;
+  .hero-actions a.join-entry {
+    min-height: 62px;
+    padding: 14px 26px;
+    font-size: 28px;
+    gap: 10px;
   }
-  .hero-actions .hero-primary-actions .join-entry {
-    padding: 12px;
-    font-size: 17px;
-    gap: 6px;
+  .hero-secondary-actions {
+    gap: 14px;
   }
-  .hero-actions .hero-primary-actions .hero-explore {
+  .hero-actions .hero-secondary-actions .hero-explore {
     padding: 12px;
     font-size: 12px;
     gap: 6px;
   }
 }
 @media (max-width: 600px) {
-  .hero-primary-actions {
+  .home .hero-actions {
+    gap: 14px;
+  }
+  .hero-actions a.join-entry {
+    min-height: 60px;
+    padding: 14px 24px;
+    font-size: 27px;
     gap: 10px;
   }
-  .hero-actions .hero-primary-actions .join-entry {
-    min-height: 52px;
-    padding: 12px 16px;
-    gap: 8px;
+  .hero-actions a.join-entry > svg {
+    width: 22px;
+    height: 22px;
   }
-  .hero-actions .hero-primary-actions .join-entry > svg {
-    width: 18px;
-    height: 18px;
+  .hero-secondary-actions {
+    gap: 12px;
   }
-  .hero-actions .hero-primary-actions .hero-explore {
+  .hero-actions .hero-secondary-actions .hero-explore {
     padding: 12px;
     gap: 6px;
   }
-  .hero-actions .hero-primary-actions .hero-explore > svg {
+  .hero-actions .hero-secondary-actions .hero-explore > svg {
     width: 17px;
     height: 17px;
   }
 }
-/* The two-action row must not force the tablet illustration beyond the viewport. */
+/* Keep the tablet illustration inside the viewport with the stacked action rows. */
 @media (min-width: 601px) and (max-width: 740px) {
   .home .hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
