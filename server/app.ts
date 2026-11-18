@@ -190,12 +190,17 @@ export function createApp(
       .parse(req.body);
     const s = settings();
     const user = accounts.current(req);
-    if (s.enabled && requireAccount && !user) {
+    if (requireAccount && !user && (s.enabled || production)) {
       res.status(401).json({ error: '请先登录，再开始正式问卷' }); return;
     }
     const selected = drawQuestions(questions(), s.questionCount);
-    let token = req.cookies.ipp_guest;
-    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/.test(token)) token = randomBytes(32).toString('hex');
+    // Never trust a client-supplied guest token (fixation): always issue a fresh
+    // server-generated token and migrate any unfinished attempt from the old one.
+    const previousToken =
+      typeof req.cookies.ipp_guest === 'string' && /^[a-f0-9]{64}$/.test(req.cookies.ipp_guest)
+        ? req.cookies.ipp_guest
+        : null;
+    const token = randomBytes(32).toString('hex');
     res.cookie('ipp_guest', token, { ...cookies, maxAge: 24 * HOUR });
     const now = Date.now(),
       id = randomUUID();
@@ -205,8 +210,9 @@ export function createApp(
       .prepare(
         'SELECT * FROM attempts WHERE owner=? AND result IS NULL AND expiresAt>? ORDER BY createdAt DESC LIMIT 1'
       )
-      .get(owner, now) as Row | undefined;
+      .get(user || !previousToken ? owner : hash(previousToken), now) as Row | undefined;
     if (existing) {
+      if (!user && previousToken) db.prepare('UPDATE attempts SET owner=? WHERE id=?').run(owner, existing.id);
       res.json(publicAttempt(existing));
       return;
     }
@@ -435,7 +441,16 @@ export function createApp(
   }
   const onError: express.ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: error.issues.map(i => i.message).join('；') });
+      // Keep intentional business messages (CJK); never echo zod internals such as validation regexes.
+      const friendly = error.issues.map(i => i.message).filter(m => /[\u4e00-\u9fff]/.test(m));
+      const fields = [...new Set(error.issues.map(i => i.path.join('.')).filter(Boolean))];
+      res.status(400).json({
+        error: friendly.length
+          ? friendly.join('；')
+          : fields.length
+            ? `请求参数不合法：${fields.join('、')}`
+            : '请求参数不合法'
+      });
       return;
     }
     if (error.status && error.status < 500) {

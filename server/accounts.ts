@@ -82,6 +82,14 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
   if (!(db.prepare('PRAGMA table_info(attempts)').all() as Row[]).some(c => c.name === 'userId'))
     db.exec('ALTER TABLE attempts ADD COLUMN userId TEXT REFERENCES users(id)');
   db.exec('CREATE INDEX IF NOT EXISTS attempts_user ON attempts(userId,createdAt)');
+  // Verification tables key rows by a one-way email digest, never plaintext addresses.
+  const emailKey = (email: string) => hash(`email-key:${email}`);
+  for (const table of ['email_codes', 'password_reset_codes']) {
+    for (const row of db.prepare(`SELECT * FROM ${table} WHERE email LIKE '%@%'`).all() as Row[]) {
+      db.prepare(`DELETE FROM ${table} WHERE email=?`).run(row.email);
+      db.prepare(`INSERT OR REPLACE INTO ${table} VALUES (?,?,?,?,?)`).run(emailKey(row.email), row.codeHash, row.expiresAt, row.sentAt, row.failures);
+    }
+  }
   const notifications = accountNotifications(db, options.mailer, options.origin);
   const initialPresidentEmail = options.initialPresidentEmail ? emailSchema.parse(options.initialPresidentEmail) : undefined;
   db.prepare('INSERT OR IGNORE INTO account_secrets VALUES (?,?)').run('email-code-hmac', randomBytes(32).toString('hex'));
@@ -128,18 +136,18 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
     const email = emailSchema.parse(req.body.email);
     if (!options.mailer) { res.status(503).json({ error: '邮件服务暂不可用，请稍后再试' }); return; }
     accountLimit(`code:${email}`, 5, HOUR);
-    const previous = db.prepare('SELECT sentAt FROM email_codes WHERE email=?').get(email) as Row | undefined;
+    const previous = db.prepare('SELECT sentAt FROM email_codes WHERE email=?').get(emailKey(email)) as Row | undefined;
     if (previous && Date.now() - previous.sentAt < 60_000) { res.status(429).json({ error: '请一分钟后再获取验证码' }); return; }
     const generic = { ok: true, message: '如该邮箱可以注册，验证码将发送至邮箱' };
     if (db.prepare('SELECT id FROM users WHERE email=?').get(email)) { res.json(generic); return; }
     const code = String(randomInt(100000, 1000000));
     const digest = codeHash(email, code);
     db.prepare(`INSERT INTO email_codes VALUES (?,?,?,?,0) ON CONFLICT(email) DO UPDATE SET codeHash=excluded.codeHash,expiresAt=excluded.expiresAt,sentAt=excluded.sentAt,failures=0`)
-      .run(email, digest, Date.now() + 10 * 60_000, Date.now());
+      .run(emailKey(email), digest, Date.now() + 10 * 60_000, Date.now());
     try {
       await options.mailer(accountMail({ kind: 'registration-code', to: email, code }, options.origin));
     } catch {
-      db.prepare('DELETE FROM email_codes WHERE email=? AND codeHash=?').run(email, digest);
+      db.prepare('DELETE FROM email_codes WHERE email=? AND codeHash=?').run(emailKey(email), digest);
       res.status(503).json({ error: '邮件发送失败，请稍后再试' }); return;
     }
     res.json(generic);
@@ -149,11 +157,11 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
     accountLimit(`register:${input.email}`, 10, HOUR);
     const digest = codeHash(input.email, input.code);
     const validCode = () => {
-      const row = db.prepare('SELECT * FROM email_codes WHERE email=?').get(input.email) as Row | undefined;
+      const row = db.prepare('SELECT * FROM email_codes WHERE email=?').get(emailKey(input.email)) as Row | undefined;
       return row && row.expiresAt > Date.now() && row.failures < 5 && timingSafeEqual(Buffer.from(digest), Buffer.from(row.codeHash));
     };
     if (!validCode()) {
-      db.prepare('UPDATE email_codes SET failures=failures+1 WHERE email=?').run(input.email);
+      db.prepare('UPDATE email_codes SET failures=failures+1 WHERE email=?').run(emailKey(input.email));
       res.status(400).json({ error: '验证码无效或已过期，请重新获取' }); return;
     }
     const encoded = await passwordHash(input.password);
@@ -167,7 +175,7 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
       const initialPresident = input.email === initialPresidentEmail && !db.prepare("SELECT id FROM users WHERE role='president'").get();
       db.prepare('INSERT INTO users VALUES (?,?,?,?,?,?)').run(id, input.email, input.displayName, encoded, initialPresident ? 'president' : 'non_member', Date.now());
       if (initialPresident) db.prepare('INSERT INTO audit_log VALUES (?,?,?,?,?)').run(randomUUID(), id, 'verified:initial-president', id, Date.now());
-      db.prepare('DELETE FROM email_codes WHERE email=?').run(input.email);
+      db.prepare('DELETE FROM email_codes WHERE email=?').run(emailKey(input.email));
       notifications.enqueue(id, { kind: 'welcome', to: input.email, name: input.displayName, role: initialPresident ? 'admin' : 'non_member' });
       db.exec('COMMIT');
     } catch (e) { db.exec('ROLLBACK'); throw e; }
@@ -182,13 +190,13 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
     if (recoveryDeliveries >= 10) { res.status(503).json({ error: '邮件服务繁忙，请稍后再试' }); return; }
     accountLimit(`reset-send:${email}`, 5, HOUR);
     const now = Date.now();
-    const previous = db.prepare('SELECT * FROM password_reset_codes WHERE email=?').get(email) as Row | undefined;
+    const previous = db.prepare('SELECT * FROM password_reset_codes WHERE email=?').get(emailKey(email)) as Row | undefined;
     if (previous && now - previous.sentAt < 60_000) { res.status(429).json({ error: '请一分钟后再获取验证码' }); return; }
     const generic = { ok: true, message: '如果该邮箱已注册，你将收到重设密码验证码' };
     const code = String(randomInt(100000, 1000000));
     const digest = resetDigest(email, code);
     db.prepare(`INSERT INTO password_reset_codes VALUES (?,?,?,?,0) ON CONFLICT(email) DO UPDATE SET codeHash=excluded.codeHash,expiresAt=excluded.expiresAt,sentAt=excluded.sentAt,failures=0`)
-      .run(email, digest, now + 10 * 60_000, now);
+      .run(emailKey(email), digest, now + 10 * 60_000, now);
     if (db.prepare('SELECT id FROM users WHERE email=?').get(email)) {
       recoveryDeliveries++;
       // SMTP work runs independently of the HTTP response for both known and unknown addresses.
@@ -203,11 +211,11 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
     accountLimit(`reset-verify:${input.email}`, 10, HOUR);
     const digest = resetDigest(input.email, input.code);
     const validCode = () => {
-      const row = db.prepare('SELECT * FROM password_reset_codes WHERE email=?').get(input.email) as Row | undefined;
+      const row = db.prepare('SELECT * FROM password_reset_codes WHERE email=?').get(emailKey(input.email)) as Row | undefined;
       return row && row.expiresAt > Date.now() && row.failures < 5 && timingSafeEqual(Buffer.from(digest), Buffer.from(row.codeHash));
     };
     if (!validCode()) {
-      db.prepare('UPDATE password_reset_codes SET failures=failures+1 WHERE email=?').run(input.email);
+      db.prepare('UPDATE password_reset_codes SET failures=failures+1 WHERE email=?').run(emailKey(input.email));
       res.status(400).json({ error: '验证码无效或已过期，请重新获取' }); return;
     }
     const encoded = await passwordHash(input.password);
@@ -217,7 +225,7 @@ export function installAccounts(app: express.Express, db: DatabaseSync, options:
       if (!validCode() || !user) {
         db.exec('ROLLBACK'); res.status(400).json({ error: '验证码无效或已过期，请重新获取' }); return;
       }
-      const consumed = db.prepare('DELETE FROM password_reset_codes WHERE email=? AND codeHash=? AND expiresAt>? AND failures<5').run(input.email, digest, Date.now());
+      const consumed = db.prepare('DELETE FROM password_reset_codes WHERE email=? AND codeHash=? AND expiresAt>? AND failures<5').run(emailKey(input.email), digest, Date.now());
       if (consumed.changes !== 1) throw new Error('Password reset code consumption failed');
       db.prepare('UPDATE users SET passwordHash=? WHERE id=?').run(encoded, user.id);
       db.prepare('DELETE FROM account_sessions WHERE userId=?').run(user.id);
