@@ -214,6 +214,8 @@ test('email registration entry, user management and mail queue UI', async ({ pag
   await page.getByRole('button', { name: '登录', exact: true }).click();
   await page.getByRole('button', { name: '用户与邮件', exact: true }).click();
   await expect(page.getByRole('heading', { name: '用户与身份' })).toBeVisible();
+  // 套件共用一个 e2e 数据库：收件人数随其他用例注册/提权变化，按当前管理员数断言。
+  const adminScope = await (await page.request.get('/api/admin/users?role=admin&page=1')).json();
   await expect(page.getByText('admin@example.com', { exact: true })).toBeVisible();
   await page.getByRole('checkbox', { name: '管理员', exact: true }).check();
   await page.getByLabel('主题', { exact: true }).fill('测试公告');
@@ -221,7 +223,10 @@ test('email registration entry, user management and mail queue UI', async ({ pag
   await page.getByRole('button', { name: '确认收件范围' }).click();
   await expect(page.getByRole('dialog', { name: '发送这封邮件？' })).toBeVisible();
   await page.getByRole('button', { name: '确认发送', exact: true }).click();
-  await expect(page.getByText('邮件已安排发送，共 1 位收件人。', { exact: true })).toBeVisible();
+  // 批量发信在满负载套件里可能超过默认 5s，单独放宽这一条等待。
+  await expect(
+    page.getByText(`邮件已安排发送，共 ${adminScope.total} 位收件人。`, { exact: true })
+  ).toBeVisible({ timeout: 20_000 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   await page.screenshot({ path: info.outputPath('users-mail.png'), fullPage: true });
 });

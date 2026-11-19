@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { THEME_PRESETS } from '../src/theme/presets';
+import { readFileSync } from 'node:fs';
+// 赛事断言随 events.json 内容自适应：直接读 JSON，保持 spec 与 src/content 的模块加载方式解耦。
+const events: { name: string }[] = JSON.parse(
+  readFileSync(new URL('../src/content/events.json', import.meta.url), 'utf8')
+).events;
 
 // 这些用例断言的是版式与交互，不是名单内容，所以统一跑在固定的演示成员上，
 // 真实 people.json 增删成员不会让它们变红。见 src/content/PeopleProvider.tsx。
@@ -105,9 +110,14 @@ test('projects show real sources and events have an honest empty state', async (
     .getByRole('link', { name: /关注赛事展台/ })
     .click();
   await expect(page).toHaveURL(/\/events$/);
-  await expect(page.getByText('目前暂无已公布赛事。', { exact: true })).toBeVisible();
-  await expect(page.locator('.event-card')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /报名/ })).toHaveCount(0);
+  if (events.length === 0) {
+    await expect(page.getByText('目前暂无已公布赛事。', { exact: true })).toBeVisible();
+    await expect(page.locator('.event-card')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /报名/ })).toHaveCount(0);
+  } else {
+    await expect(page.locator('.event-card')).toHaveCount(events.length);
+    await expect(page.getByText(events[0].name).first()).toBeVisible();
+  }
   await page.screenshot({ path: info.outputPath('events-empty.png'), fullPage: true, animations: 'disabled' });
   await page.goto('/');
   await expect(page.locator('.home-events').getByRole('link', { name: '查看赛事展台' })).toHaveAttribute(
@@ -235,9 +245,17 @@ test('visible cards keep stable hit targets while their contents use finite expr
 
   await page.goto('/events');
   await page.waitForTimeout(500);
-  await stableLift('.surface-card-hitbox', '.events-empty');
-  await page.locator('.events-empty').hover();
-  await expect.poll(() => page.locator('.empty-ticket').evaluate(e => getComputedStyle(e).translate)).not.toBe('none');
+  if (events.length === 0) {
+    await stableLift('.surface-card-hitbox', '.events-empty');
+    await page.locator('.events-empty').hover();
+    await expect.poll(() => page.locator('.empty-ticket').evaluate(e => getComputedStyle(e).translate)).not.toBe('none');
+  } else {
+    await stableLift('.surface-card-hitbox', '.event-card');
+    await page.locator('.event-card').first().hover();
+    await expect
+      .poll(() => page.locator('.event-card .event-date').first().evaluate(e => getComputedStyle(e).translate))
+      .not.toBe('none');
+  }
 
   await page.goto('/assessment');
   await expect(page.locator('.notice')).toBeVisible();

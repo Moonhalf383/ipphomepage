@@ -58,6 +58,7 @@ export async function revealTheme(commit: () => void, point: RevealOrigin) {
   root.style.setProperty('--theme-reveal-x', `${x}px`);
   root.style.setProperty('--theme-reveal-y', `${y}px`);
   let transition: ViewTransition | undefined;
+  let watchdog: ReturnType<typeof setTimeout> | undefined;
   try {
     transition = document.startViewTransition(update);
     active = transition;
@@ -87,12 +88,24 @@ export async function revealTheme(commit: () => void, point: RevealOrigin) {
       await finished;
       return;
     }
-    await animation.finished;
+    // WebKit can stall WAAPI animations on view-transition pseudo-elements at t=0,
+    // leaving `finished` unsettled. Race a watchdog so the data-theme-transition
+    // state (which freezes every transition and animation) is always released.
+    const stalled = animation;
+    const watchdogBail = new Promise<never>((_, reject) => {
+      watchdog = setTimeout(() => {
+        stalled.cancel();
+        transition?.skipTransition();
+        reject(new Error('view-transition reveal stalled'));
+      }, 980);
+    });
+    await Promise.race([animation.finished, watchdogBail]);
     await finished;
   } catch {
     transition?.skipTransition();
     update(); // A rejected/unsupported snapshot must never prevent the actual setting change.
   } finally {
+    clearTimeout(watchdog);
     if (ticket === generation) {
       delete root.dataset.themeTransition;
       root.style.removeProperty('--theme-reveal-x');

@@ -15,8 +15,10 @@ test('temporary recruitment button leads the hero actions without a banner or na
     await expect(page.locator('.join-banner')).toHaveCount(0);
     const joinBox = (await join.boundingBox())!;
     const exploreBox = (await explore.boundingBox())!;
-    expect(joinBox.x + joinBox.width).toBeLessThanOrEqual(exploreBox.x);
-    expect(Math.abs(joinBox.y + joinBox.height / 2 - exploreBox.y - exploreBox.height / 2)).toBeLessThan(1);
+    // The join entry owns the first action row; secondary actions stack below it,
+    // left-aligned, at every width (see src/join-entry.css).
+    expect(joinBox.y + joinBox.height).toBeLessThanOrEqual(exploreBox.y + 1);
+    expect(Math.abs(joinBox.x - exploreBox.x)).toBeLessThan(2);
     expect(await join.evaluate(e => parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThan(
       await explore.evaluate(e => parseFloat(getComputedStyle(e).fontSize))
     );
@@ -46,7 +48,8 @@ test('recruitment button has finite hover, focus and press feedback with a stabl
   await page.goto('/');
   const button = page.locator('.join-entry');
   await expect(button).toBeVisible();
-  await page.locator('main').evaluate(e => Promise.all(e.getAnimations().map(a => a.finished.catch(() => {}))));
+  // 入场动画作用在 hero-actions 等后代上，等整棵文档的动画结束再量几何。
+  await page.evaluate(() => Promise.all(document.getAnimations().map(a => a.finished.catch(() => {}))));
   const baseShadow = await button.evaluate(e => getComputedStyle(e).boxShadow);
   const before = (await button.boundingBox())!;
   await page.mouse.move(before.x + 1, before.y + before.height / 2);

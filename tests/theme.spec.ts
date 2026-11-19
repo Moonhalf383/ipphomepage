@@ -117,7 +117,7 @@ test('hover has spatial feedback, parallax resets, and route changes animate wit
     };
   });
   await page.goto('/');
-  const cta = page.locator('.hero-actions .link-button');
+  const cta = page.locator('.hero-actions .join-entry');
   await cta.hover();
   expect(await cta.evaluate(e => getComputedStyle(e).translate)).toBe('none');
   await expect.poll(() => cta.evaluate(e => getComputedStyle(e).boxShadow)).not.toBe('none');
@@ -292,4 +292,36 @@ test('six generated palettes have accessible light/dark pages and a usable narro
     expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
     expect(await page.getByRole('dialog').evaluate(e => e.scrollWidth <= e.clientWidth)).toBe(true);
   }
+});
+
+test('a stalled view-transition reveal animation never freezes page motion', async ({ page }) => {
+  // Emulate the observed WebKit stall: the pseudo-element animation stays at t=0
+  // and its finished promise never settles. The watchdog must still release the
+  // data-theme-transition suppression and apply the theme.
+  await page.addInitScript(() => {
+    const original = Element.prototype.animate;
+    Element.prototype.animate = function (keyframes, options) {
+      const animation = original.call(this, keyframes, options);
+      if (options && (options as KeyframeAnimationOptions).pseudoElement) {
+        animation.pause();
+        animation.currentTime = 0;
+        Object.defineProperty(animation, 'finished', { value: new Promise(() => {}) });
+      }
+      return animation;
+    };
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: '切换深色模式' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme-transition', 'reveal', { timeout: 3000 });
+  expect(
+    await page.locator('.hero-copy h1').evaluate(e => getComputedStyle(e).animationPlayState)
+  ).not.toBe('paused');
+  expect(
+    await page.locator('.hero-copy h1').evaluate(e => getComputedStyle(e).transitionProperty)
+  ).not.toBe('none');
+  // A second toggle still works after the bail-out.
+  await page.getByRole('button', { name: '切换浅色模式' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme-transition', 'reveal', { timeout: 3000 });
 });
